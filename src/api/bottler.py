@@ -67,7 +67,7 @@ def get_bottle_plan():
         bottling_plan = []
         for potion in potions:
             potion_quantity_sql = "SELECT quantity FROM potion_catalog_items WHERE potion_type = :potion_type"
-            result = connection.execute(sqlalchemy.text(potion_quantity_sql), {"potion_type": potion.potion_type})
+            result = connection.execute(sqlalchemy.text(potion_quantity_sql), {"potion_type": potion_type_tostr(potion.potion_type)})
             potion_quantity = result.fetchone()[0]
             if potion_quantity > potion_threshold:
                 continue
