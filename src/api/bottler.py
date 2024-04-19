@@ -43,6 +43,9 @@ def get_bottle_plan():
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
     with db.engine.begin() as connection:
+        potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
+        result = connection.execute(sqlalchemy.text(potion_threshold_sql))
+        potion_threshold = result.fetchone()[0]
         max_potion_sql = "SELECT potion_capacity_units FROM global_plan"
         result = connection.execute(sqlalchemy.text(max_potion_sql))
         max_potion = result.fetchone()[0] * 50
@@ -63,6 +66,11 @@ def get_bottle_plan():
         potions.sort(key=lambda x: x.price, reverse=True)
         bottling_plan = []
         for potion in potions:
+            potion_quantity_sql = "SELECT quantity FROM potion_catalog_items WHERE potion_type = :potion_type"
+            result = connection.execute(sqlalchemy.text(potion_quantity_sql), {"potion_type": potion.potion_type})
+            potion_quantity = result.fetchone()[0]
+            if potion_quantity > potion_threshold:
+                continue
             potion = potion._asdict()
             quantity = list_floor_division(ml_inventory, potion["potion_type"])
             quantity = min(quantity, available_potions)
