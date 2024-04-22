@@ -23,7 +23,7 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     with db.engine.begin() as connection:
         for potion in potions_delivered:
             for i in range(4):
-                barrel_type = [j == i for j in range(4)]
+                barrel_type = [1 if j == i else 0 for j in range(4)]
                 if potion.potion_type[i] == 0:
                     continue
                 barrel_update_sql = "INSERT INTO barrels (order_id, barrel_type, potion_ml) VALUES (:order_id, :barrel_type, :potion_ml)"
@@ -44,20 +44,17 @@ def get_bottle_plan():
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
     with db.engine.begin() as connection:
-        potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
-        result = connection.execute(sqlalchemy.text(potion_threshold_sql))
-        potion_threshold = result.fetchone()[0]
-        max_potion_sql = "SELECT potion_capacity_units FROM global_plan"
+        max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
         result = connection.execute(sqlalchemy.text(max_potion_sql))
         max_potion = result.fetchone()[0] * 50
-        potion_sql = "SELECT SUM(quantity) FROM potion_catalog_items"
+        potion_sql = "SELECT SUM(quantity) FROM potions"
         result = connection.execute(sqlalchemy.text(potion_sql))
         potions = result.fetchone()[0]
         available_potions = max_potion - potions
         
-        ml_inventory = [0 for i in range(4)]
+        ml_inventory = [0 for _ in range(4)]
         for i in range(4):
-            barrel_type = [j == i for j in range(4)]
+            barrel_type = [1 if j == i else 0 for j in range(4)]
             barrel_sql = "SELECT SUM(potion_ml) FROM barrels WHERE barrel_type = :barrel_type"
             result = connection.execute(sqlalchemy.text(barrel_sql), [{"barrel_type": potion_type_tostr(barrel_type)}])
             ml_inventory[i] = result.fetchone()[0]
@@ -67,11 +64,6 @@ def get_bottle_plan():
         potions.sort(key=lambda x: x.price, reverse=True)
         bottling_plan = []
         for potion in potions:
-            potion_quantity_sql = "SELECT quantity FROM potion_catalog_items WHERE potion_type = :potion_type"
-            result = connection.execute(sqlalchemy.text(potion_quantity_sql), {"potion_type": potion_type_tostr(potion.potion_type)})
-            potion_quantity = result.fetchone()[0]
-            if potion_quantity > potion_threshold:
-                continue
             potion = potion._asdict()
             quantity = list_floor_division(ml_inventory, potion["potion_type"])
             quantity = min(quantity, available_potions)
