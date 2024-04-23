@@ -41,22 +41,19 @@ def get_capacity_plan():
     gold_sql = "SELECT SUM(gold) FROM gold_ledger"
     inventory_sql = "SELECT * FROM global_inventory"
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
-        gold = result
-        result = connection.execute(sqlalchemy.text(inventory_sql))
-        row_inventory = result.fetchone()._asdict()
-        if row_inventory["potion_capacity_plan"] + row_inventory["ml_capacity_plan"] < (gold // 1000):
-            print(f"potion capacity: {row_inventory['potion_capacity_plan']} ml capacity: {row_inventory['ml_capacity_plan']} gold: {gold}")
-            return {
-                "potion_capacity": row_inventory["potion_capacity_plan"],
-                "ml_capacity": row_inventory["ml_capacity_plan"],
-            }
-        else:
-            print("Invalid capacity plan. Not enough gold to purchase planned capacity.")
-            return {
-                "potion_capacity": 0,
-                "ml_capacity": 0,
-            }
+        gold = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
+        row_inventory = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()._asdict()
+        
+        max_gold_purchase = gold // 1000
+        potion_capacity_plan = row_inventory["potion_capacity_plan"]
+        potion_capacity_purchase = min(max_gold_purchase, potion_capacity_plan)
+        max_gold_purchase -= potion_capacity_purchase
+        ml_capacity_plan = row_inventory["ml_capacity_plan"]
+        ml_capacity_purchase = min(max_gold_purchase, ml_capacity_plan)
+        return {
+            "potion_capacity": potion_capacity_purchase,
+            "ml_capacity": ml_capacity_purchase,
+        }
 
 class CapacityPurchase(BaseModel):
     potion_capacity: int
