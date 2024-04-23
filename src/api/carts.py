@@ -137,7 +137,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
             connection.execute(sqlalchemy.text(potion_update_sql), [{"order_id": id, 
                                                                      "potion_type": potion_type, 
-                                                                     "quantity": row["quantity"]}])
+                                                                     "quantity": -row["quantity"]}])
 
             potion_price_sql = f"SELECT price FROM potion_catalog_items WHERE sku = :sku"
             price = connection.execute(sqlalchemy.text(potion_price_sql),
