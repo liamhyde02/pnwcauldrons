@@ -14,19 +14,15 @@ router = APIRouter(
 @router.get("/audit")
 def get_inventory():
     """ """
+    global_inventory_sql = "SELECT SUM(gold) FROM gold_ledger"
+    potion_quantity_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions"
+    barrels_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels"
     with db.engine.begin() as connection:
-        global_inventory_sql = "SELECT SUM(gold) FROM gold_ledger"
-        result = connection.execute(sqlalchemy.text(global_inventory_sql))
-        gold = result.fetchone()[0]
-        potion_catalog_sql = "SELECT SUM(quantity) FROM potions"
-        result = connection.execute(sqlalchemy.text(potion_catalog_sql))
-        num_potions = result.fetchone()[0]
-        barrels_sql = "SELECT SUM(potion_ml) FROM barrels"
-        result = connection.execute(sqlalchemy.text(barrels_sql))
-        num_ml = result.fetchone()[0]
-  
-        
-        print(f"num_potions: {num_potions} num_ml: {num_ml} gold: {gold}")    
+        gold = connection.execute(sqlalchemy.text(global_inventory_sql)).scalar_one()
+        num_potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).scalar_one()
+        num_ml = connection.execute(sqlalchemy.text(barrels_sql)).scalar_one()
+        print(f"num_potions: {num_potions} num_ml: {num_ml} gold: {gold}")   
+
         return [
                 {
                     "number_of_potions": num_potions,
@@ -42,11 +38,11 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
+    gold_sql = "SELECT SUM(gold) FROM gold_ledger"
+    inventory_sql = "SELECT * FROM global_inventory"
     with db.engine.begin() as connection:
-        gold_sql = "SELECT SUM(gold) FROM gold_ledger"
         result = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
         gold = result
-        inventory_sql = "SELECT * FROM global_inventory"
         result = connection.execute(sqlalchemy.text(inventory_sql))
         row_inventory = result.fetchone()._asdict()
         if row_inventory["potion_capacity_plan"] + row_inventory["ml_capacity_plan"] < (gold // 1000):
@@ -75,18 +71,16 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     """
     print(f"order_id: {order_id} potion_capacity: {capacity_purchase.potion_capacity} ml_capacity: {capacity_purchase.ml_capacity}")
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'capacity') RETURNING id"
+    capacity_insert_sql = "INSERT into global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (:order_id, :potion_capacity, :ml_capacity)"
+    gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
     with db.engine.begin() as connection:   
         id = connection.execute(sqlalchemy.text(processed_entry_sql), 
                                 [{"order_id": order_id}]).scalar_one()
-        capacity_insert_sql = "INSERT into global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (:order_id, :potion_capacity, :ml_capacity)"
         connection.execute(sqlalchemy.text(capacity_insert_sql), 
                            [{"order_id": id,
                              "potion_capacity": capacity_purchase.potion_capacity, 
                              "ml_capacity": capacity_purchase.ml_capacity}])
-        gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
         connection.execute(sqlalchemy.text(gold_sql),
                            [{"order_id": id, 
                           "gold": -1000 * (capacity_purchase.potion_capacity + capacity_purchase.ml_capacity)}])
-
-
     return "OK"

@@ -11,14 +11,14 @@ def get_catalog():
     Each unique item combination must have only a single price.
     """
     sql_to_execute = "SELECT * FROM potion_catalog_items"
+    potion_quantity_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions WHERE potion_type = :potion_type"
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(sql_to_execute))
         rows = [row._asdict() for row in result.fetchall()]
         catalog = []
         for row in rows:
-            potion_quantity_sql = "SELECT SUM(quantity) FROM potions WHERE potion_type = :potion_type"
-            result = connection.execute(sqlalchemy.text(potion_quantity_sql), [{"potion_type": row["potion_type"]}])
-            quantity = result.fetchone()[0]
+            quantity = connection.execute(sqlalchemy.text(potion_quantity_sql), 
+                                        [{"potion_type": row["potion_type"]}]).scalar_one()
             if quantity > 0:
                 catalog.append(
                     {
