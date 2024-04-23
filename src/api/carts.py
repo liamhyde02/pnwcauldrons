@@ -128,11 +128,11 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
         for row in rows:   
             potion_type_sql = "SELECT potion_type FROM potion_catalog_items WHERE sku = :sku"
             result = connection.execute(sqlalchemy.text(potion_type_sql), [{"sku": row["item_sku"]}]).scalar_one()
-            potion_type = result[0]
+            potion_type = result
             quantity += row["quantity"]
             potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
             connection.execute(sqlalchemy.text(potion_update_sql), [{"order_id": cart_id, 
-                                                                     "potion_type": potion_type_tostr(potion_type), 
+                                                                     "potion_type": potion_type, 
                                                                      "quantity": row["quantity"]}])
 
             potion_price_sql = f"SELECT price FROM potion_catalog_items WHERE sku = :sku"
