@@ -74,16 +74,18 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     capacity unit costs 1000 gold.
     """
     print(f"order_id: {order_id} potion_capacity: {capacity_purchase.potion_capacity} ml_capacity: {capacity_purchase.ml_capacity}")
-
+    processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'capacity') RETURNING id"
     with db.engine.begin() as connection:   
+        id = connection.execute(sqlalchemy.text(processed_entry_sql), 
+                                [{"order_id": order_id}]).scalar_one()
         capacity_insert_sql = "INSERT into global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (:order_id, :potion_capacity, :ml_capacity)"
         connection.execute(sqlalchemy.text(capacity_insert_sql), 
-                           [{"order_id": order_id,
+                           [{"order_id": id,
                              "potion_capacity": capacity_purchase.potion_capacity, 
                              "ml_capacity": capacity_purchase.ml_capacity}])
         gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
         connection.execute(sqlalchemy.text(gold_sql),
-                           [{"order_id": order_id, 
+                           [{"order_id": id, 
                           "gold": -1000 * (capacity_purchase.potion_capacity + capacity_purchase.ml_capacity)}])
 
 
