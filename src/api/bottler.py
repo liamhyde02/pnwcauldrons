@@ -51,35 +51,38 @@ def get_bottle_plan():
     # Each bottle has a quantity of what proportion of red, blue, and
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
+    max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
+    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions"
+    barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels WHERE barrel_type = :barrel_type"
+    potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
+    potion_catalog_sql = "SELECT * FROM potion_catalog_items"
+    potion_type_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions WHERE potion_type = :potion_type"
+
     with db.engine.begin() as connection:
-        max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
-        result = connection.execute(sqlalchemy.text(max_potion_sql))
-        max_potion = result.fetchone()[0] * 50
-        potion_sql = "SELECT SUM(quantity) FROM potions"
-        result = connection.execute(sqlalchemy.text(potion_sql))
-        potions = result.fetchone()[0]
+        max_potion = connection.execute(sqlalchemy.text(max_potion_sql)).scalar_one() * 50
+        potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
         available_potions = max_potion - potions
-        
+        potion_threshold = connection.execute(sqlalchemy.text(potion_threshold_sql)).scalar_one()
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
             barrel_type = [1 if j == i else 0 for j in range(4)]
-            barrel_sql = "SELECT SUM(potion_ml) FROM barrels WHERE barrel_type = :barrel_type"
-            result = connection.execute(sqlalchemy.text(barrel_sql), [{"barrel_type": potion_type_tostr(barrel_type)}])
-            ml_inventory[i] = result.fetchone()[0]
-        potion_catalog_sql = "SELECT * FROM potion_catalog_items"
+            ml_inventory[i] = connection.execute(sqlalchemy.text(barrel_sql), 
+                                        [{"barrel_type": potion_type_tostr(barrel_type)}]).scalar_one()
         result = connection.execute(sqlalchemy.text(potion_catalog_sql))
         potions = result.fetchall()
         potions.sort(key=lambda x: x.price, reverse=True)
         bottling_plan = []
         for potion in potions:
-            potion = potion._asdict()
-            quantity = list_floor_division(ml_inventory, potion["potion_type"])
-            quantity = min(quantity, available_potions)
+            current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
+                                        [{"potion_type": potion.potion_type}]).scalar_one()
+            gold_max = list_floor_division(ml_inventory, potion.potion_type)
+            threshold_max = potion_threshold - current_potions
+            quantity = min(gold_max, threshold_max, available_potions)
             available_potions -= quantity
-            ml_inventory = [ml_inventory[i] - quantity * potion["potion_type"][i] for i in range(4)]
+            ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
             if quantity > 0:
                 bottling_plan.append(
-                                    {"potion_type": potion["potion_type"], 
+                                    {"potion_type": potion.potion_type, 
                                         "quantity": quantity
                                     }
                             )
