@@ -22,6 +22,8 @@ def reset():
     carts_sql = f"DELETE FROM carts"
     cart_items_sql = f"DELETE FROM cart_items"
     starting_gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (-1, 100)"
+    capacity_reset_sql = "DELETE FROM global_plan"
+    capacity_restart_sql = "INSERT INTO global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (-1, 1, 1)"
     with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(potion_reset_sql))
         connection.execute(sqlalchemy.text(barrel_reset_sql))
@@ -29,5 +31,7 @@ def reset():
         connection.execute(sqlalchemy.text(carts_sql))
         connection.execute(sqlalchemy.text(cart_items_sql))
         connection.execute(sqlalchemy.text(starting_gold_sql))
+        connection.execute(sqlalchemy.text(capacity_reset_sql))
+        connection.execute(sqlalchemy.text(capacity_restart_sql))
     return "OK"
 
