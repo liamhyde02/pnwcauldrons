@@ -16,6 +16,7 @@ def reset():
     Reset the game state. Gold goes to 100, all potions are removed from
     inventory, and all barrels are removed from inventory. Carts are all reset.
     """
+    processed_reset_sql = "DELETE FROM processed"
     potion_reset_sql = "DELETE FROM potions"
     barrel_reset_sql = "DELETE FROM barrels"
     gold_reset_sql = "DELETE FROM gold_ledger"
@@ -26,6 +27,7 @@ def reset():
     starting_capacity_sql = "INSERT INTO global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (:order_id, 1, 1)"
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'reset') RETURNING id"
     with db.engine.begin() as connection:
+        connection.execute(sqlalchemy.text(processed_reset_sql))
         connection.execute(sqlalchemy.text(potion_reset_sql))
         connection.execute(sqlalchemy.text(barrel_reset_sql))
         connection.execute(sqlalchemy.text(gold_reset_sql))
