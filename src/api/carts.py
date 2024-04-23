@@ -121,9 +121,13 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     print(f"cart_id: {cart_id} payment: {cart_checkout.payment}")
     quantity = 0
     total_gold = 0
-    cart_items_sql = f"SELECT * FROM cart_items WHERE cart_id = {cart_id}"
+    cart_items_sql = "SELECT * FROM cart_items WHERE cart_id = :cart_id"
+    processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'checkout') RETURNING id"
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text(cart_items_sql))
+        result = connection.execute(sqlalchemy.text(cart_items_sql),
+                                    [{"cart_id": cart_id}])
+        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+                                [{"order_id": cart_id}]).scalar_one()
         rows = [row._asdict() for row in result]
         for row in rows:   
             potion_type_sql = "SELECT potion_type FROM potion_catalog_items WHERE sku = :sku"
@@ -131,7 +135,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             potion_type = result
             quantity += row["quantity"]
             potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
-            connection.execute(sqlalchemy.text(potion_update_sql), [{"order_id": cart_id, 
+            connection.execute(sqlalchemy.text(potion_update_sql), [{"order_id": id, 
                                                                      "potion_type": potion_type, 
                                                                      "quantity": row["quantity"]}])
 
@@ -141,7 +145,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             
 
             gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
-            connection.execute(sqlalchemy.text(gold_sql), [{"order_id": cart_id, 
+            connection.execute(sqlalchemy.text(gold_sql), [{"order_id": id, 
                                                             "gold": price * row["quantity"]}])
             total_gold += price * row["quantity"]
     return {"total_potions_bought": quantity, "total_gold_paid": total_gold}

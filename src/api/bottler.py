@@ -20,7 +20,10 @@ class PotionInventory(BaseModel):
 def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int):
     """ """
     print(f"potions delivered: {potions_delivered} order_id: {order_id}")
+    processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'bottles') RETURNING id"
     with db.engine.begin() as connection:
+        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+                           [{"order_id": order_id}]).scalar_one()
         for potion in potions_delivered:
             for i in range(4):
                 barrel_type = [1 if j == i else 0 for j in range(4)]
@@ -28,10 +31,15 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                     continue
                 barrel_update_sql = "INSERT INTO barrels (order_id, barrel_type, potion_ml) VALUES (:order_id, :barrel_type, :potion_ml)"
                 connection.execute(sqlalchemy.text(barrel_update_sql),
-                                    [{"order_id": order_id,"barrel_type": potion_type_tostr(barrel_type), "potion_ml": (-potion.quantity * potion.potion_type[i])}])
+                                    [{"order_id": id,
+                                      "barrel_type": potion_type_tostr(barrel_type), 
+                                      "potion_ml": (-potion.quantity * potion.potion_type[i])}])
+                
             potion_insert_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
             connection.execute(sqlalchemy.text(potion_insert_sql),
-                                [{"order_id": order_id,"potion_type": potion_type_tostr(potion.potion_type), "quantity": potion.quantity}])
+                                [{"order_id": id,
+                                  "potion_type": potion_type_tostr(potion.potion_type),
+                                  "quantity": potion.quantity}])
     return "OK"
 
 @router.post("/plan")

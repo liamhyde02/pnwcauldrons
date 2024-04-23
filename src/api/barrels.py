@@ -23,16 +23,19 @@ class Barrel(BaseModel):
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     """ """
     print(f"barrels delivered: {barrels_delivered} order_id: {order_id}")
+    processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'barrels') RETURNING id"
     with db.engine.begin() as connection:
+        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+                           [{"order_id": order_id}]).scalar_one()
         for barrel in barrels_delivered:
             for i in range(barrel.quantity):
                 barrel_insert_sql = "INSERT INTO barrels (order_id, barrel_type, potion_ml) VALUES (:order_id, :barrel_type, :potion_ml)"
-                connection.execute(sqlalchemy.text(barrel_insert_sql), [{"order_id": order_id, 
+                connection.execute(sqlalchemy.text(barrel_insert_sql), [{"order_id": id, 
                                                                          "barrel_type": potion_type_tostr(barrel.potion_type), 
                                                                          "potion_ml": barrel.ml_per_barrel}])
             gold_ledger_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
             connection.execute(sqlalchemy.text(gold_ledger_sql), 
-                               [{"order_id": order_id, 
+                               [{"order_id": id, 
                                  "gold": -barrel.price * barrel.quantity}])
     return "OK"
 
