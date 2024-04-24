@@ -50,6 +50,7 @@ def get_capacity_plan():
         max_gold_purchase -= potion_capacity_purchase
         ml_capacity_plan = row_inventory["ml_capacity_plan"]
         ml_capacity_purchase = min(max_gold_purchase, ml_capacity_plan)
+        print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
         return {
             "potion_capacity": potion_capacity_purchase,
             "ml_capacity": ml_capacity_purchase,

@@ -60,7 +60,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         barrel_plan = []
         barrel_type_set = set()
         for barrel in wholesale_catalog:
-            if barrel.potion_type not in barrel_type_set:
+            if potion_type_tostr(barrel.potion_type) not in barrel_type_set:
                 barrel_ml = connection.execute(sqlalchemy.text(barrel_ml_sql), 
                                             [{"barrel_type": potion_type_tostr(barrel.potion_type)}]).scalar_one()
                 max_buy_gold = running_total // barrel.price
@@ -76,7 +76,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     )
                     running_total -= barrel.price * quantity
                     available_ml -= barrel.ml_per_barrel * quantity
-                    barrel_type_set.add(barrel.potion_type)
+                    barrel_type_set.add(potion_type_tostr(barrel.potion_type))
 
         print(f"barrel purchase plan: {barrel_plan}, running_total: {running_total}")
         return barrel_plan
