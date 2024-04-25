@@ -76,16 +76,16 @@ def get_bottle_plan():
         for potion in potions:
             current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
                                         [{"potion_type": potion.potion_type}]).scalar_one()
-            gold_max = list_floor_division(ml_inventory, potion.potion_type)
+            inventory_max = list_floor_division(ml_inventory, potion.potion_type)
             threshold_max = potion_threshold - current_potions
-            quantity = min(gold_max, threshold_max, available_potions)
-            available_potions -= quantity
-            ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
+            quantity = min(inventory_max, threshold_max, available_potions)
             if quantity > 0:
                 bottling_plan.append(
                                     {"potion_type": potion.potion_type, 
                                         "quantity": quantity
                                     }
                             )
+                ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
+                available_potions -= quantity
         print(f"bottling_plan: {bottling_plan}")
         return bottling_plan
