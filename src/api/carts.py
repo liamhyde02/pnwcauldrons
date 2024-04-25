@@ -119,33 +119,36 @@ class CartCheckout(BaseModel):
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     print(f"cart_id: {cart_id} payment: {cart_checkout.payment}")
-    quantity = 0
+    total_quantity = 0
     total_gold = 0
     cart_items_sql = "SELECT * FROM cart_items WHERE cart_id = :cart_id"
+    update_timestamp_sql = "UPDATE potion_catalog_items SET last_selected = NOW() WHERE sku = :sku"
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'checkout') RETURNING id"
+    potion_type_sql = "SELECT potion_type, price FROM potion_catalog_items WHERE sku = :sku"
+    potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
+    gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
+    potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(cart_items_sql),
                                     [{"cart_id": cart_id}])
+        cart_items = [row for row in result]
         id = connection.execute(sqlalchemy.text(processed_entry_sql),
                                 [{"order_id": cart_id}]).scalar_one()
-        rows = [row._asdict() for row in result]
-        for row in rows:   
-            potion_type_sql = "SELECT potion_type FROM potion_catalog_items WHERE sku = :sku"
-            result = connection.execute(sqlalchemy.text(potion_type_sql), [{"sku": row["item_sku"]}]).scalar_one()
-            potion_type = result
-            quantity += row["quantity"]
-            potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
-            connection.execute(sqlalchemy.text(potion_update_sql), [{"order_id": id, 
-                                                                     "potion_type": potion_type, 
-                                                                     "quantity": -row["quantity"]}])
-
-            potion_price_sql = f"SELECT price FROM potion_catalog_items WHERE sku = :sku"
+        for cart_item in cart_items:   
+            potion_type = connection.execute(sqlalchemy.text(potion_type_sql), 
+                                             [{"sku": cart_item.item_sku}]).scalar_one()
+            connection.execute(sqlalchemy.text(update_timestamp_sql), 
+                               [{"sku": cart_item.item_sku}])
+            connection.execute(sqlalchemy.text(potion_update_sql), 
+                               [{"order_id": id, 
+                                 "potion_type": potion_type, 
+                                 "quantity": -cart_item.quantity}])
             price = connection.execute(sqlalchemy.text(potion_price_sql),
-                                        [{"sku": row["item_sku"]}]).scalar_one()
-            
+                                        [{"sku": cart_item.item_sku}]).scalar_one()
+            connection.execute(sqlalchemy.text(gold_sql), 
+                               [{"order_id": id, 
+                                 "gold": price * cart_item.quantity}])
+            total_gold += price * cart_item.quantity
+            total_quantity += cart_item.quantity
 
-            gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
-            connection.execute(sqlalchemy.text(gold_sql), [{"order_id": id, 
-                                                            "gold": price * row["quantity"]}])
-            total_gold += price * row["quantity"]
-    return {"total_potions_bought": quantity, "total_gold_paid": total_gold}
+    return {"total_potions_bought": total_quantity, "total_gold_paid": total_gold}
