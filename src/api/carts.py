@@ -92,7 +92,6 @@ def post_visits(visit_id: int, customers: list[Customer]):
                                  "character_class": customer.character_class, 
                                  "level": customer.level,
                                  "day": day}])
-
     return "OK"
 
 
