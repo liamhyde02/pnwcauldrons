@@ -54,7 +54,6 @@ def get_catalog():
                         )
                         listed_items += 1
                         potions.remove(potion)
-
             if listed_items >= 6:
                 break
             if len(potions) == 0:

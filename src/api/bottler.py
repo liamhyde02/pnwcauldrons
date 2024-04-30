@@ -126,5 +126,5 @@ def get_bottle_plan():
                             )
                 ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
                 available_potions -= quantity
-        print(f"bottling_plan: {bottling_plan}")
+        print(f"bottling_plan: {bottling_plan}, leftover inventory: {ml_inventory}")
         return bottling_plan
