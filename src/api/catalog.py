@@ -13,17 +13,14 @@ def get_catalog():
     """
     potion_quantity_sql = "SELECT potion_type, SUM(quantity) as potion_quantity FROM potions GROUP BY potion_type having SUM(quantity) > 0"
     potion_catalog_sql = "SELECT * FROM potion_catalog_items WHERE potion_type = :potion_type"
-    visits_sql = "SELECT character_class FROM visits JOIN global_time ON visits.day = global_time.day"
+    visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(potion_quantity_sql))
         potions = [row._asdict() for row in result.fetchall()]
         visits = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in visits]
-        class_totals = {}
-        for visit in visits:
-            class_totals[visit["character_class"]] = class_totals.get(visit["character_class"], 0) + 1
-        class_totals = {k: v for k, v in sorted(class_totals.items(), key=lambda item: item[1], reverse=True)}
+        class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
         
         catalog = []
         listed_items = 0
@@ -54,11 +51,11 @@ def get_catalog():
                             }
                         )
                         listed_items += 1
-                        if listed_items >= 6:
-                            break
                         potions.remove(potion)
-                        if len(potions) == 0:
-                            break
+                if listed_items >= 6:
+                    break
+                if len(potions) == 0:
+                    break
                 print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
         if listed_items < 6 and len(potions) > 0:
             for potion in potions:
