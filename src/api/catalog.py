@@ -58,6 +58,9 @@ def get_catalog():
                 if len(potions) == 0:
                     break
                 print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
+        
+        random.shuffle(potions)
+        print(f"remaining potions: {potions}")
         if listed_items < 6 and len(potions) > 0:
             for potion in potions:
                 catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 

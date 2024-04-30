@@ -110,6 +110,8 @@ def get_bottle_plan():
                             ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
                             available_potions -= quantity
                             potions.remove(potion)
+        
+        random.shuffle(potions)
         for potion in potions:
             current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
                                         [{"potion_type": potion.potion_type}]).scalar_one()
