@@ -82,20 +82,16 @@ def post_visits(visit_id: int, customers: list[Customer]):
     Which customers visited the shop today?
     """
     print(customers)
-    visits_entry_sql = "INSERT INTO visits (customer_name, character_class, level) VALUES (:customer_name, :character_class, :level)"
-    new_day_sql = "SELECT new_day FROM global_inventory"
-    reset_new_day_sql = "UPDATE global_inventory SET new_day = FALSE"
-    reset_visits_sql = "DELETE FROM visits"
+    visits_entry_sql = "INSERT INTO visits (customer_name, character_class, level, day) VALUES (:customer_name, :character_class, :level, :day)"
+    get_day_sql = "SELECT day FROM global_time"
     with db.engine.begin() as connection:
-        new_day = connection.execute(sqlalchemy.text(new_day_sql)).scalar_one()
-        if new_day:
-            connection.execute(sqlalchemy.text(reset_visits_sql))
-            connection.execute(sqlalchemy.text(reset_new_day_sql))
+        day = connection.execute(sqlalchemy.text(get_day_sql)).scalar_one()
         for customer in customers:
             connection.execute(sqlalchemy.text(visits_entry_sql), 
                                [{"customer_name": customer.customer_name, 
                                  "character_class": customer.character_class, 
-                                 "level": customer.level}])
+                                 "level": customer.level,
+                                 "day": day}])
 
     return "OK"
 
@@ -142,7 +138,11 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
     gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
     potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
+    character_class_sql = "SELECT character_class FROM carts WHERE id = :cart_id"
+    preferences_insert_sql = "INSERT INTO class_preferences (character_class, potion_type) VALUES (:character_class, :potion_type)"
     with db.engine.begin() as connection:
+        character_class = connection.execute(sqlalchemy.text(character_class_sql), 
+                                             [{"cart_id": cart_id}]).scalar_one()
         id = connection.execute(sqlalchemy.text(processed_entry_sql),
                                 [{"order_id": cart_id}]).scalar_one()
         result = connection.execute(sqlalchemy.text(cart_items_sql),
@@ -162,6 +162,9 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             connection.execute(sqlalchemy.text(gold_sql), 
                                [{"order_id": id, 
                                  "gold": price * cart_item.quantity}])
+            connection.execute(sqlalchemy.text(preferences_insert_sql),
+                                 [{"character_class": character_class, 
+                                    "potion_type": potion_type}])
             total_gold += price * cart_item.quantity
             total_quantity += cart_item.quantity
 
