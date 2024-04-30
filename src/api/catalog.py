@@ -13,7 +13,7 @@ def get_catalog():
     """
     potion_quantity_sql = "SELECT potion_type, SUM(quantity) as potion_quantity FROM potions GROUP BY potion_type having SUM(quantity) > 0"
     potion_catalog_sql = "SELECT * FROM potion_catalog_items WHERE potion_type = :potion_type"
-    visits_sql = "SELECT character_class FROM visits JOIN global_time ON visits.day = 'global_time.day'"
+    visits_sql = "SELECT character_class FROM visits JOIN global_time ON visits.day = global_time.day"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(potion_quantity_sql))
