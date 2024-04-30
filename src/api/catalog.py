@@ -38,6 +38,7 @@ def get_catalog():
                     weights=[choice[1] for choice in weighted_choices],
                     k=1
                 )[0]
+                print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
                 for potion in potions:
                     if potion["potion_type"] == selected_potion:
                         catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 
@@ -53,11 +54,11 @@ def get_catalog():
                         )
                         listed_items += 1
                         potions.remove(potion)
-                if listed_items >= 6:
-                    break
-                if len(potions) == 0:
-                    break
-                print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
+
+            if listed_items >= 6:
+                break
+            if len(potions) == 0:
+                break
         
         random.shuffle(potions)
         print(f"remaining potions: {potions}")
