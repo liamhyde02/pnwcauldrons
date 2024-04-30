@@ -18,13 +18,14 @@ def get_catalog():
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(potion_quantity_sql))
         potions = [row._asdict() for row in result.fetchall()]
-        visits = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
-        visits = [row._asdict() for row in visits]
+        result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
+        visits = [row._asdict() for row in result]
         class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
-        
+        sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
+
         catalog = []
         listed_items = 0
-        for character_class in class_totals:
+        for character_class in sorted_classes:
             class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
                                                   [{"character_class": character_class}]).fetchall()
             class_preference = [row._asdict() for row in class_preference]
