@@ -82,6 +82,20 @@ def post_visits(visit_id: int, customers: list[Customer]):
     Which customers visited the shop today?
     """
     print(customers)
+    visits_entry_sql = "INSERT INTO visits (customer_name, character_class, level) VALUES (:customer_name, :character_class, :level)"
+    new_day_sql = "SELECT new_day FROM global_inventory"
+    reset_new_day_sql = "UPDATE global_inventory SET new_day = FALSE"
+    reset_visits_sql = "DELETE FROM visits"
+    with db.engine.begin() as connection:
+        new_day = connection.execute(sqlalchemy.text(new_day_sql)).scalar_one()
+        if new_day:
+            connection.execute(sqlalchemy.text(reset_visits_sql))
+            connection.execute(sqlalchemy.text(reset_new_day_sql))
+        for customer in customers:
+            connection.execute(sqlalchemy.text(visits_entry_sql), 
+                               [{"customer_name": customer.customer_name, 
+                                 "character_class": customer.character_class, 
+                                 "level": customer.level}])
 
     return "OK"
 
@@ -129,11 +143,11 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
     potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
     with db.engine.begin() as connection:
+        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+                                [{"order_id": cart_id}]).scalar_one()
         result = connection.execute(sqlalchemy.text(cart_items_sql),
                                     [{"cart_id": cart_id}])
         cart_items = [row for row in result]
-        id = connection.execute(sqlalchemy.text(processed_entry_sql),
-                                [{"order_id": cart_id}]).scalar_one()
         for cart_item in cart_items:   
             potion_type = connection.execute(sqlalchemy.text(potion_type_sql), 
                                              [{"sku": cart_item.item_sku}]).scalar_one()
