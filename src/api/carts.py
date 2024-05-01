@@ -55,20 +55,42 @@ def search_orders(
     Your results must be paginated, the max results you can return at any
     time is 5 total line items.
     """
+    search_sql = "SELECT cart_items.id, cart_items.item_sku, carts.customer_name, potion_catalog_items.price * cart_items.quantity as line_item_total, cart_items.created_at as timestamp FROM cart_items JOIN carts ON cart_items.cart_id = carts.id JOIN potion_catalog_items ON cart_items.item_sku = potion_catalog_items.sku WHERE carts.customer_name ILIKE :customer_name AND cart_items.item_sku ILIKE :item_sku ORDER BY {} {} LIMIT 5".format(sort_col, sort_order)
+    search_results = []
+    with db.engine.begin() as connection:
+        result = connection.execute(sqlalchemy.text(search_sql), 
+                                    [{"customer_name": f"%{customer_name}%", "item_sku": f"%{potion_sku}%"}])
+        results = [row._asdict() for row in result.fetchall()]
+        for row in results:
+            search_results.append({
+                "previous": "",
+                "next": "",
+                "results": [
+                    {
+                    "line_item_id": row["id"],
+                    "item_sku": row["item_sku"],
+                    "customer_name": row["customer_name"],
+                    "line_item_total": row["line_item_total"],
+                    "timestamp": row["timestamp"],
+                    }
+                ]
+            })
+    return search_results
 
-    return {
-        "previous": "",
-        "next": "",
-        "results": [
-            {
-                "line_item_id": 1,
-                "item_sku": "1 oblivion potion",
-                "customer_name": "Scaramouche",
-                "line_item_total": 50,
-                "timestamp": "2021-01-01T00:00:00Z",
-            }
-        ],
-    }
+        
+    # return {
+    #     "previous": "",
+    #     "next": "",
+    #     "results": [
+    #         {
+    #             "line_item_id": 1,
+    #             "item_sku": "1 oblivion potion",
+    #             "customer_name": "Scaramouche",
+    #             "line_item_total": 50,
+    #             "timestamp": "2021-01-01T00:00:00Z",
+    #         }
+    #     ],
+    # }
 
 
 class Customer(BaseModel):
