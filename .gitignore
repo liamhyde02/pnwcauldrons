@@ -4,3 +4,6 @@ venv
 __pycache__
 /.env
 info.log
+/.vscode
+/node_modules
+/supabase
