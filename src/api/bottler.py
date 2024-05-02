@@ -69,8 +69,8 @@ def get_bottle_plan():
         sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
         print(f"sorted_classes: {sorted_classes}")
         max_potion = connection.execute(sqlalchemy.text(max_potion_sql)).scalar_one() * 50
-        current_potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
-        available_potions = max_potion - current_potions
+        potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
+        available_potions = max_potion - potions
         potion_threshold = connection.execute(sqlalchemy.text(potion_threshold_sql)).scalar_one()
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
@@ -80,36 +80,36 @@ def get_bottle_plan():
         result = connection.execute(sqlalchemy.text(potion_catalog_sql))
         potions = result.fetchall()
         bottling_plan = []
-        # for character_class in sorted_classes:
-        #     class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
-        #                                           [{"character_class": character_class}]).fetchall()
-        #     class_preference = [row._asdict() for row in class_preference]
-        #     if len(class_preference) == 0:
-        #         print(f"character_class: {character_class}, class_preference: No preference yet")
-        #     else: 
-        #         weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
-        #         selected_potion = random.choices(
-        #             [choice[0] for choice in weighted_choices], 
-        #             weights=[choice[1] for choice in weighted_choices],
-        #             k=1
-        #         )[0]
-        #         print(f"character_class: {character_class}, selected_potion: {selected_potion}")
-        #         for potion in potions:
-        #             if potion.potion_type == selected_potion:
-        #                 current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
-        #                                             [{"potion_type": potion.potion_type}]).scalar_one()
-        #                 inventory_max = list_floor_division(ml_inventory, potion.potion_type)
-        #                 threshold_max = potion_threshold - current_potions
-        #                 quantity = min(inventory_max, threshold_max, available_potions)
-        #                 if quantity > 0:
-        #                     bottling_plan.append(
-        #                                         {"potion_type": potion.potion_type, 
-        #                                             "quantity": quantity
-        #                                         }
-        #                                 )
-        #                     ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
-        #                     available_potions -= quantity
-        #                     potions.remove(potion)
+        for character_class in sorted_classes:
+            class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
+                                                  [{"character_class": character_class}]).fetchall()
+            class_preference = [row._asdict() for row in class_preference]
+            if len(class_preference) == 0:
+                print(f"character_class: {character_class}, class_preference: No preference yet")
+            else: 
+                weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
+                selected_potion = random.choices(
+                    [choice[0] for choice in weighted_choices], 
+                    weights=[choice[1] for choice in weighted_choices],
+                    k=1
+                )[0]
+                print(f"character_class: {character_class}, selected_potion: {selected_potion}")
+                for potion in potions:
+                    if potion.potion_type == selected_potion:
+                        current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
+                                                    [{"potion_type": potion.potion_type}]).scalar_one()
+                        inventory_max = list_floor_division(ml_inventory, potion.potion_type)
+                        threshold_max = potion_threshold - current_potions
+                        quantity = min(inventory_max, threshold_max, available_potions)
+                        if quantity > 0:
+                            bottling_plan.append(
+                                                {"potion_type": potion.potion_type, 
+                                                    "quantity": quantity
+                                                }
+                                        )
+                            ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
+                            available_potions -= quantity
+                            potions.remove(potion)
         
         random.shuffle(potions)
         for potion in potions:
