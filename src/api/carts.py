@@ -150,7 +150,8 @@ def create_cart(new_cart: Customer):
     #     ).returning(carts.c.id)
     with db.engine.begin() as connection:
         cart_insert_stmt = "INSERT INTO carts (customer_name, character_class, level) VALUES (:customer_name, :character_class, :level) RETURNING id"
-        cart_id = connection.execute(sqlalchemy.text(cart_insert_stmt)).scalar_one()
+        cart_id = connection.execute(sqlalchemy.text(cart_insert_stmt),
+                                     [{"customer_name": new_cart.customer_name, "character_class": new_cart.character_class, "level": new_cart.level}]).scalar_one()
     print(f"cart_id: {cart_id} customer_name: {new_cart.customer_name} character_class: {new_cart.character_class} level: {new_cart.level}")
     return {"cart_id": cart_id}
 
