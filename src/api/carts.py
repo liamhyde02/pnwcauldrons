@@ -59,13 +59,11 @@ def search_orders(
     search_results = []
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(search_sql), 
-                                    [{"customer_name": f"%{customer_name}%", "item_sku": f"%{potion_sku}%"}])
+                                    [{"customer_name": f"%{customer_name}%", 
+                                      "item_sku": f"%{potion_sku}%"}])
         results = [row._asdict() for row in result.fetchall()]
         for row in results:
-            search_results.append({
-                "previous": "",
-                "next": "",
-                "results": [
+            search_results.append(
                     {
                     "line_item_id": row["id"],
                     "item_sku": row["item_sku"],
@@ -73,25 +71,10 @@ def search_orders(
                     "line_item_total": row["line_item_total"],
                     "timestamp": row["timestamp"],
                     }
-                ]
-            })
-    return search_results
-
-        
-    # return {
-    #     "previous": "",
-    #     "next": "",
-    #     "results": [
-    #         {
-    #             "line_item_id": 1,
-    #             "item_sku": "1 oblivion potion",
-    #             "customer_name": "Scaramouche",
-    #             "line_item_total": 50,
-    #             "timestamp": "2021-01-01T00:00:00Z",
-    #         }
-    #     ],
-    # }
-
+            )
+    return {"previous": "",
+            "next": "",
+            "results": search_results}
 
 class Customer(BaseModel):
     customer_name: str
@@ -120,10 +103,17 @@ def post_visits(visit_id: int, customers: list[Customer]):
 @router.post("/")
 def create_cart(new_cart: Customer):
     """ """
+    metadata = sqlalchemy.MetaData()
+    carts = sqlalchemy.Table("carts", metadata, autoload_with=db.engine)
+    cart_insert_stmt = sqlalchemy.insert(
+        carts
+        ).values(
+            customer_name=new_cart.customer_name,
+            character_class=new_cart.character_class,
+            level=new_cart.level
+        ).returning(carts.c.id)
     with db.engine.begin() as connection:
-        sql_to_execute = f"INSERT INTO carts (customer_name, character_class, level) VALUES ('{new_cart.customer_name}', '{new_cart.character_class}', {new_cart.level}) RETURNING id"
-        result = connection.execute(sqlalchemy.text(sql_to_execute))
-        cart_id = result.fetchone()[0]
+        cart_id = connection.execute(cart_insert_stmt).scalar_one()
     print(f"cart_id: {cart_id} customer_name: {new_cart.customer_name} character_class: {new_cart.character_class} level: {new_cart.level}")
     return {"cart_id": cart_id}
 
@@ -136,10 +126,18 @@ class CartItem(BaseModel):
 def set_item_quantity(cart_id: int, item_sku: str, cart_item: CartItem):
     """ """
     print(f"cart_id: {cart_id} item_sku: {item_sku} quantity: {cart_item.quantity}")
-    sql_to_execute = "INSERT INTO cart_items (cart_id, item_sku, quantity) VALUES (:cart_id, :item_sku, :quantity)"
+    metadata = sqlalchemy.MetaData()
+    cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
+    cart_items_insert_stmt = sqlalchemy.insert(
+        cart_id=cart_id,
+        item_sku=item_sku,
+        quantity=cart_item.quantity
+    )
+    # sql_to_execute = "INSERT INTO cart_items (cart_id, item_sku, quantity) VALUES (:cart_id, :item_sku, :quantity)"
     with db.engine.begin() as connection:
-        connection.execute(sqlalchemy.text(sql_to_execute),
-                           [{"cart_id": cart_id, "item_sku": item_sku, "quantity": cart_item.quantity}])
+        # connection.execute(sqlalchemy.text(sql_to_execute),
+        #                    [{"cart_id": cart_id, "item_sku": item_sku, "quantity": cart_item.quantity}])
+        connection.execute(cart_items_insert_stmt)
     return "OK"
 
 
@@ -156,15 +154,20 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     update_timestamp_sql = "UPDATE potion_catalog_items SET last_selected = NOW() WHERE sku = :sku"
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'checkout') RETURNING id"
     potion_type_sql = "SELECT potion_type, price FROM potion_catalog_items WHERE sku = :sku"
-    potion_update_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
-    gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
+    potion_update_sql = "INSERT INTO potion_ledger (processed_id, potion_type, quantity) VALUES (:processed_id, :potion_type, :quantity)"
+    gold_sql = "INSERT INTO gold_ledger (processed_id, gold) VALUES (:processed_id, :gold)"
     potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
     character_class_sql = "SELECT character_class FROM carts WHERE id = :cart_id"
     preferences_insert_sql = "INSERT INTO class_preferences (character_class, potion_type) VALUES (:character_class, :potion_type)"
+    metadata = sqlalchemy.MetaData()
+    potions = sqlalchemy.Table("potion_ledger", metadata, autoload_with=db.engine)
+    cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
+    potion_catalog_items = sqlalchemy.Table("potion_catalog_items", metadata, autoload_with=db.engine)
+
     with db.engine.begin() as connection:
         character_class = connection.execute(sqlalchemy.text(character_class_sql), 
                                              [{"cart_id": cart_id}]).scalar_one()
-        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+        processed_id = connection.execute(sqlalchemy.text(processed_entry_sql),
                                 [{"order_id": cart_id}]).scalar_one()
         result = connection.execute(sqlalchemy.text(cart_items_sql),
                                     [{"cart_id": cart_id}])
@@ -175,13 +178,13 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
             connection.execute(sqlalchemy.text(update_timestamp_sql), 
                                [{"sku": cart_item.item_sku}])
             connection.execute(sqlalchemy.text(potion_update_sql), 
-                               [{"order_id": id, 
+                               [{"processed_id": processed_id, 
                                  "potion_type": potion_type, 
                                  "quantity": -cart_item.quantity}])
             price = connection.execute(sqlalchemy.text(potion_price_sql),
                                         [{"sku": cart_item.item_sku}]).scalar_one()
             connection.execute(sqlalchemy.text(gold_sql), 
-                               [{"order_id": id, 
+                               [{"processed_id": processed_id, 
                                  "gold": price * cart_item.quantity}])
             connection.execute(sqlalchemy.text(preferences_insert_sql),
                                  [{"character_class": character_class, 

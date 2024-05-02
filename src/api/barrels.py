@@ -24,18 +24,18 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     """ """
     print(f"barrels delivered: {barrels_delivered} order_id: {order_id}")
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'barrels') RETURNING id"
-    barrel_insert_sql = "INSERT INTO barrels (order_id, barrel_type, potion_ml) VALUES (:order_id, :barrel_type, :potion_ml)"
-    gold_ledger_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
+    barrel_insert_sql = "INSERT INTO barrel_ledger (processed_id, barrel_type, potion_ml) VALUES (:processed_id, :barrel_type, :potion_ml)"
+    gold_ledger_sql = "INSERT INTO gold_ledger (processed_id, gold) VALUES (:processed_id, :gold)"
     with db.engine.begin() as connection:
-        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+        processed_id = connection.execute(sqlalchemy.text(processed_entry_sql),
                            [{"order_id": order_id}]).scalar_one()
         for barrel in barrels_delivered:
             for _ in range(barrel.quantity):
-                connection.execute(sqlalchemy.text(barrel_insert_sql), [{"order_id": id, 
+                connection.execute(sqlalchemy.text(barrel_insert_sql), [{"processed_id": processed_id, 
                                                                          "barrel_type": potion_type_tostr(barrel.potion_type), 
                                                                          "potion_ml": barrel.ml_per_barrel}])
             connection.execute(sqlalchemy.text(gold_ledger_sql), 
-                               [{"order_id": id, 
+                               [{"processed_id": processed_id, 
                                  "gold": -barrel.price * barrel.quantity}])
     return "OK"
 
@@ -45,10 +45,10 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
     max_ml_sql = "SELECT SUM(ml_capacity_units) FROM global_plan"
-    ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels"
+    ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger"
     global_inventory_sql = "SELECT * FROM global_inventory"
     gold_sql = "SELECT SUM(gold) FROM gold_ledger"
-    barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels WHERE barrel_type = :barrel_type"
+    barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
         max_ml = connection.execute(sqlalchemy.text(max_ml_sql)).scalar_one() * 10000

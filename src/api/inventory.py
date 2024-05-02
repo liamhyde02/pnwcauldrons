@@ -15,8 +15,8 @@ router = APIRouter(
 def get_inventory():
     """ """
     global_inventory_sql = "SELECT SUM(gold) FROM gold_ledger"
-    potion_quantity_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions"
-    barrels_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels"
+    potion_quantity_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
+    barrels_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger"
     with db.engine.begin() as connection:
         gold = connection.execute(sqlalchemy.text(global_inventory_sql)).scalar_one()
         num_potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).scalar_one()
@@ -69,16 +69,16 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     """
     print(f"order_id: {order_id} potion_capacity: {capacity_purchase.potion_capacity} ml_capacity: {capacity_purchase.ml_capacity}")
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'capacity') RETURNING id"
-    capacity_insert_sql = "INSERT into global_plan (order_id, potion_capacity_units, ml_capacity_units) VALUES (:order_id, :potion_capacity, :ml_capacity)"
-    gold_sql = "INSERT INTO gold_ledger (order_id, gold) VALUES (:order_id, :gold)"
+    capacity_insert_sql = "INSERT into global_plan (processed_id, potion_capacity_units, ml_capacity_units) VALUES (:processed_id, :potion_capacity, :ml_capacity)"
+    gold_sql = "INSERT INTO gold_ledger (processed_id, gold) VALUES (:processed_id, :gold)"
     with db.engine.begin() as connection:   
-        id = connection.execute(sqlalchemy.text(processed_entry_sql), 
+        processed_id = connection.execute(sqlalchemy.text(processed_entry_sql), 
                                 [{"order_id": order_id}]).scalar_one()
         connection.execute(sqlalchemy.text(capacity_insert_sql), 
-                           [{"order_id": id,
+                           [{"processed_id": processed_id,
                              "potion_capacity": capacity_purchase.potion_capacity, 
                              "ml_capacity": capacity_purchase.ml_capacity}])
         connection.execute(sqlalchemy.text(gold_sql),
-                           [{"order_id": id, 
+                           [{"processed_id": processed_id, 
                           "gold": -1000 * (capacity_purchase.potion_capacity + capacity_purchase.ml_capacity)}])
     return "OK"

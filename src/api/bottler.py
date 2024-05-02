@@ -22,11 +22,11 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
     """ """
     print(f"potions delivered: {potions_delivered} order_id: {order_id}")
     processed_entry_sql = "INSERT INTO processed (order_id, type) VALUES (:order_id, 'bottles') RETURNING id"
-    barrel_update_sql = "INSERT INTO barrels (order_id, barrel_type, potion_ml) VALUES (:order_id, :barrel_type, :potion_ml)"
-    potion_insert_sql = "INSERT INTO potions (order_id, potion_type, quantity) VALUES (:order_id, :potion_type, :quantity)"
+    barrel_update_sql = "INSERT INTO barrel_ledger (processed_id, barrel_type, potion_ml) VALUES (:processed_id, :barrel_type, :potion_ml)"
+    potion_insert_sql = "INSERT INTO potion_ledger (processed_id, potion_type, quantity) VALUES (:processed_id, :potion_type, :quantity)"
     
     with db.engine.begin() as connection:
-        id = connection.execute(sqlalchemy.text(processed_entry_sql),
+        processed_id = connection.execute(sqlalchemy.text(processed_entry_sql),
                            [{"order_id": order_id}]).scalar_one()
         for potion in potions_delivered:
             for i in range(4):
@@ -34,12 +34,12 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
                 if potion.potion_type[i] == 0:
                     continue
                 connection.execute(sqlalchemy.text(barrel_update_sql),
-                                    [{"order_id": id,
+                                    [{"processed_id": processed_id,
                                       "barrel_type": potion_type_tostr(barrel_type), 
                                       "potion_ml": (-potion.quantity * potion.potion_type[i])}])
                 
             connection.execute(sqlalchemy.text(potion_insert_sql),
-                                [{"order_id": id,
+                                [{"processed_id": processed_id,
                                   "potion_type": potion_type_tostr(potion.potion_type),
                                   "quantity": potion.quantity}])
     return "OK"
@@ -54,11 +54,11 @@ def get_bottle_plan():
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
     max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
-    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions"
-    barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrels WHERE barrel_type = :barrel_type"
+    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
+    barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
     potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
     potion_catalog_sql = "SELECT * FROM potion_catalog_items"
-    potion_type_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potions WHERE potion_type = :potion_type"
+    potion_type_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger WHERE potion_type = :potion_type"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
 
