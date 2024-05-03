@@ -25,44 +25,44 @@ def get_catalog():
 
         catalog = []
         listed_items = 0
-        for character_class in sorted_classes:
-            class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
-                                                  [{"character_class": character_class}]).fetchall()
-            class_preference = [row._asdict() for row in class_preference]
-            if len(class_preference) == 0:
-                print(f"character_class: {character_class}, class_preference: No preference yet")
-            else: 
-                weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
-                selected_potion = random.choices(
-                    [choice[0] for choice in weighted_choices], 
-                    weights=[choice[1] for choice in weighted_choices],
-                    k=1
-                )[0]
-                print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
-                for potion in potions:
-                    if potion["potion_type"] == selected_potion:
-                        catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 
-                                                    [{"potion_type": potion["potion_type"]}]).fetchone()._asdict()
-                        catalog.append(
-                            {
-                                "sku": catalog_entry["sku"],
-                                "name": catalog_entry["name"],
-                                "quantity": potion["potion_quantity"],
-                                "price": catalog_entry["price"],
-                                "potion_type": catalog_entry["potion_type"],
-                            }
-                        )
-                        listed_items += 1
-                        potions.remove(potion)
-            if listed_items >= 6:
-                break
-            if len(potions) == 0:
-                break
+        # for character_class in sorted_classes:
+        #     class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
+        #                                           [{"character_class": character_class}]).fetchall()
+        #     class_preference = [row._asdict() for row in class_preference]
+        #     if len(class_preference) == 0:
+        #         print(f"character_class: {character_class}, class_preference: No preference yet")
+        #     else: 
+        #         weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
+        #         selected_potion = random.choices(
+        #             [choice[0] for choice in weighted_choices], 
+        #             weights=[choice[1] for choice in weighted_choices],
+        #             k=1
+        #         )[0]
+        #         print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
+        #         for potion in potions:
+        #             if potion["potion_type"] == selected_potion:
+        #                 catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 
+        #                                             [{"potion_type": potion["potion_type"]}]).fetchone()._asdict()
+        #                 catalog.append(
+        #                     {
+        #                         "sku": catalog_entry["sku"],
+        #                         "name": catalog_entry["name"],
+        #                         "quantity": potion["potion_quantity"],
+        #                         "price": catalog_entry["price"],
+        #                         "potion_type": catalog_entry["potion_type"],
+        #                     }
+        #                 )
+        #                 listed_items += 1
+        #                 potions.remove(potion)
+        #     if listed_items >= 6:
+        #         break
+        #     if len(potions) == 0:
+        #         break
         
         random.shuffle(potions)
-        print(f"remaining potions: {potions}")
         if listed_items < 6 and len(potions) > 0:
-            for potion in potions:
+            for i in range(len(potions)):
+                potion = potions.pop()
                 catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 
                                             [{"potion_type": potion["potion_type"]}]).fetchone()._asdict()
                 catalog.append(
@@ -77,5 +77,5 @@ def get_catalog():
                 listed_items += 1
                 if listed_items >= 6:
                     break
-        print(f"catalog: {catalog}")
+        print(f"catalog: {catalog}, unlisted items: {potions}")
         return catalog
