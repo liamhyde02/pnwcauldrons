@@ -55,27 +55,39 @@ def search_orders(
     Your results must be paginated, the max results you can return at any
     time is 5 total line items.
     """
-    search_sql = "SELECT cart_items.id, cart_items.item_sku, carts.customer_name, potion_catalog_items.price * cart_items.quantity as line_item_total, cart_items.created_at as timestamp FROM cart_items JOIN carts ON cart_items.cart_id = carts.id JOIN potion_catalog_items ON cart_items.item_sku = potion_catalog_items.sku WHERE carts.customer_name ILIKE :customer_name AND cart_items.item_sku ILIKE :item_sku ORDER BY {} {} LIMIT 5".format(sort_col, sort_order)
+    offset = 0
+    if search_page != "":
+        offset = int(search_page) * 5
+    search_sql = "SELECT cart_items.id, cart_items.item_sku, carts.customer_name, potion_catalog_items.price * cart_items.quantity as line_item_total, cart_items.created_at as timestamp FROM cart_items JOIN carts ON cart_items.cart_id = carts.id JOIN potion_catalog_items ON cart_items.item_sku = potion_catalog_items.sku WHERE carts.customer_name ILIKE :customer_name AND cart_items.item_sku ILIKE :item_sku ORDER BY {} {} LIMIT 5 OFFSET :offset".format(sort_col, sort_order)
     search_results = []
     with db.engine.begin() as connection:
         result = connection.execute(sqlalchemy.text(search_sql), 
-                                    [{"customer_name": f"%{customer_name}%", "item_sku": f"%{potion_sku}%"}])
+                                    [{"customer_name": f"%{customer_name}%", 
+                                      "item_sku": f"%{potion_sku}%",
+                                      "offset": offset}])
         results = [row._asdict() for row in result.fetchall()]
+        results = sorted(results, key=lambda x: x["id"], reverse=(sort_order == "asc"))
         for row in results:
-            search_results.append({
-                "previous": "",
-                "next": "",
-                "results": [
-                    {
+            search_results.append(
+                {
                     "line_item_id": row["id"],
                     "item_sku": row["item_sku"],
                     "customer_name": row["customer_name"],
                     "line_item_total": row["line_item_total"],
                     "timestamp": row["timestamp"],
-                    }
-                ]
-            })
-    return search_results
+                }
+            )
+    if search_page == "":
+        next = 1
+        previous = ""
+    else:
+        next = int(search_page) + 1
+        previous = int(search_page) - 1
+    return {
+        "previous": previous,
+        "next": next,
+        "results": search_results
+    }
 
         
     # return {
