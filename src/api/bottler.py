@@ -54,11 +54,10 @@ def get_bottle_plan():
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
     max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
-    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
+    potions_sql = "SELECT potion_catalog_items.potion_type, COALESCE(SUM(potion_ledger.quantity), 0) as quantity FROM potion_catalog_items LEFT JOIN potion_ledger ON potion_catalog_items.potion_type = potion_ledger.potion_type GROUP BY potion_catalog_items.potion_type"
     barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
     potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
-    potion_catalog_sql = "SELECT * FROM potion_catalog_items"
-    potion_type_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger WHERE potion_type = :potion_type"
+    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
 
@@ -77,7 +76,7 @@ def get_bottle_plan():
             barrel_type = [1 if j == i else 0 for j in range(4)]
             ml_inventory[i] = connection.execute(sqlalchemy.text(barrel_sql), 
                                         [{"barrel_type": potion_type_tostr(barrel_type)}]).scalar_one()
-        result = connection.execute(sqlalchemy.text(potion_catalog_sql))
+        result = connection.execute(sqlalchemy.text(potions_sql))
         potions = result.fetchall()
         bottling_plan = []
         # for character_class in sorted_classes:
@@ -112,11 +111,11 @@ def get_bottle_plan():
         #                     potions.remove(potion)
         
         random.shuffle(potions)
-        for potion in potions:
-            current_potions = connection.execute(sqlalchemy.text(potion_type_sql), 
-                                        [{"potion_type": potion.potion_type}]).scalar_one()
+        print(f"potion_catalog: {potions}")
+        while available_potions > 0 and len(potions) > 0:
+            potion = potions.pop()
             inventory_max = list_floor_division(ml_inventory, potion.potion_type)
-            threshold_max = potion_threshold - current_potions
+            threshold_max = potion_threshold - potion.quantity
             quantity = min(inventory_max, threshold_max, available_potions)
             if quantity > 0:
                 bottling_plan.append(
