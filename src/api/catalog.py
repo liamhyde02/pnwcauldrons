@@ -11,13 +11,11 @@ def get_catalog():
     """
     Each unique item combination must have only a single price.
     """
-    potion_quantity_sql = "SELECT potion_type, SUM(quantity) as potion_quantity FROM potion_ledger GROUP BY potion_type having SUM(quantity) > 0"
-    potion_catalog_sql = "SELECT * FROM potion_catalog_items WHERE potion_type = :potion_type"
+    potion_quantity_sql = "SELECT potion_catalog_items.sku as sku, potion_catalog_items.name as name, potion_ledger.potion_type as potion_type, SUM(potion_ledger.quantity) as quantity, potion_catalog_items.price FROM potion_ledger JOIN potion_catalog_items ON potion_ledger.potion_type = potion_catalog_items.potion_type GROUP BY potion_catalog_items.sku, potion_catalog_items.name, potion_ledger.potion_type, potion_catalog_items.price having SUM(potion_ledger.quantity) > 0"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text(potion_quantity_sql))
-        potions = [row._asdict() for row in result.fetchall()]
+        potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
         class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
@@ -60,22 +58,17 @@ def get_catalog():
         #         break
         
         random.shuffle(potions)
-        if listed_items < 6 and len(potions) > 0:
-            for i in range(len(potions)):
-                potion = potions.pop()
-                catalog_entry = connection.execute(sqlalchemy.text(potion_catalog_sql), 
-                                            [{"potion_type": potion["potion_type"]}]).fetchone()._asdict()
-                catalog.append(
-                    {
-                        "sku": catalog_entry["sku"],
-                        "name": catalog_entry["name"],
-                        "quantity": potion["potion_quantity"],
-                        "price": catalog_entry["price"],
-                        "potion_type": catalog_entry["potion_type"],
-                    }
-                )
-                listed_items += 1
-                if listed_items >= 6:
-                    break
+        while len(potions) > 0 and listed_items < 6:
+            potion = potions.pop()
+            catalog.append(
+                {
+                    "sku": potion.sku,
+                    "name": potion.name,
+                    "quantity": potion.quantity,
+                    "price": potion.price,
+                    "potion_type": potion.potion_type
+                }
+            )
+            listed_items += 1
         print(f"catalog: {catalog}, unlisted items: {potions}")
         return catalog
