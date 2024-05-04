@@ -65,9 +65,13 @@ def get_bottle_plan():
         # Get sorted classes
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
-        class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
-        sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
-        print(f"sorted_classes: {sorted_classes}")
+        weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
+        selected_classes = random.choices(
+            [weight[0] for weight in weights],
+            weights=[weight[1] for weight in weights],
+            k=3
+        )
+        print(f"selected classes: {selected_classes}")
         # Get available potion space
         max_potion = connection.execute(sqlalchemy.text(max_potion_sql)).scalar_one() * 50
         potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
@@ -85,7 +89,7 @@ def get_bottle_plan():
         potions = result.fetchall()
         bottling_plan = []
         trained_potions = 0
-        for character_class in sorted_classes:
+        for character_class in selected_classes:
             # Get class preferences
             class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
                                                   [{"character_class": character_class}]).fetchall()
@@ -123,8 +127,8 @@ def get_bottle_plan():
                             potions.remove(potion)
                             trained_potions += 1
                             break
-            # If trained potions is greater than 3, break
-            if trained_potions > 3:
+            # If trained potions is greater than 4, break
+            if trained_potions >= 4:
                 break
         print(f"trained_potions: {bottling_plan}")
         # Fill in the rest of the bottling plan with random potions

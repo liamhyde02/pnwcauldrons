@@ -19,8 +19,13 @@ def get_catalog():
         potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
-        class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
-        sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
+        weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
+        selected_classes = random.choices(
+            [weight[0] for weight in weights], 
+            weights=[weight[1] for weight in weights],
+            k=3
+        )
+        print(f"selected_classes: {selected_classes}")
         total_potions, potion_capacity = connection.execute(sqlalchemy.text(total_potions_sql)).fetchone()
         if total_potions / (potion_capacity * 50) < 0.2:
             print("Low inventory, no class preferences")
@@ -32,7 +37,7 @@ def get_catalog():
             
         catalog = []
         listed_items = 0
-        for character_class in sorted_classes:
+        for character_class in selected_classes:
             class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
                                                   [{"character_class": character_class}]).fetchall()
             class_preference = [row._asdict() for row in class_preference]
@@ -59,7 +64,7 @@ def get_catalog():
                         )
                         listed_items += 1
                         potions.remove(potion)
-            if listed_items > 3:
+            if listed_items > 4:
                 break
             if len(potions) == 0:
                 break
