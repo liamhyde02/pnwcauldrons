@@ -15,8 +15,10 @@ router = APIRouter(
 def get_inventory():
     """ """
     get_inventory_sql = "SELECT gold, ml, potions FROM inventory"
+    inventory_log_sql = "INSERT INTO inventory_log (gold, ml, potions) SELECT gold, ml, potions FROM inventory"
     with db.engine.begin() as connection:
         gold, ml, potions = connection.execute(sqlalchemy.text(get_inventory_sql)).fetchone()
+        connection.execute(sqlalchemy.text(inventory_log_sql))
         print(f"num_potions: {potions} num_ml: {ml} gold: {gold}")   
 
         return [
