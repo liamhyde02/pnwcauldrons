@@ -53,7 +53,7 @@ def get_catalog():
                                 "sku": potion.sku,
                                 "name": potion.name,
                                 "quantity": potion.quantity,
-                                "price": (int(potion.price * 0.75)) if fire_sale else potion.price,
+                                "price": (int(.9 * (int(potion.price * 0.75)) if fire_sale else potion.price)),
                                 "potion_type": potion.potion_type
                             }
                         )
@@ -73,7 +73,7 @@ def get_catalog():
                     "sku": potion.sku,
                     "name": potion.name,
                     "quantity": potion.quantity,
-                    "price": potion.price,
+                    "price": (int(potion.price * 0.75)) if fire_sale else potion.price,
                     "potion_type": potion.potion_type
                 }
             )
