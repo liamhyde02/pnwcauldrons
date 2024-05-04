@@ -14,13 +14,22 @@ def get_catalog():
     potion_quantity_sql = "SELECT potion_catalog_items.sku as sku, potion_catalog_items.name as name, potion_ledger.potion_type as potion_type, SUM(potion_ledger.quantity) as quantity, potion_catalog_items.price FROM potion_ledger JOIN potion_catalog_items ON potion_ledger.potion_type = potion_catalog_items.potion_type GROUP BY potion_catalog_items.sku, potion_catalog_items.name, potion_ledger.potion_type, potion_catalog_items.price having SUM(potion_ledger.quantity) > 0"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
+    total_potions_sql = "SELECT potions, potion_capacity from inventory"
     with db.engine.begin() as connection:
         potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
         class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
         sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
-
+        total_potions, potion_capacity = connection.execute(sqlalchemy.text(total_potions_sql)).fetchone()
+        if total_potions / (potion_capacity * 50) < 0.2:
+            print("Low inventory, no class preferences")
+            sorted_classes = []
+        fire_sale = False
+        if potion_capacity > 2 and total_potions / (potion_capacity * 50) > 0.6:
+            print("FIRE SALE!!!")
+            fire_sale = True
+            
         catalog = []
         listed_items = 0
         for character_class in sorted_classes:
@@ -44,7 +53,7 @@ def get_catalog():
                                 "sku": potion.sku,
                                 "name": potion.name,
                                 "quantity": potion.quantity,
-                                "price": potion.price,
+                                "price": (int(potion.price * 0.75)) if fire_sale else potion.price,
                                 "potion_type": potion.potion_type
                             }
                         )
