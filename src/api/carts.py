@@ -247,10 +247,10 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
     character_class_sql = "SELECT character_class FROM carts WHERE id = :cart_id"
     preferences_insert_sql = "INSERT INTO class_preferences (character_class, potion_type) VALUES (:character_class, :potion_type)"
-    metadata = sqlalchemy.MetaData()
-    potions = sqlalchemy.Table("potion_ledger", metadata, autoload_with=db.engine)
-    cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
-    potion_catalog_items = sqlalchemy.Table("potion_catalog_items", metadata, autoload_with=db.engine)
+    # metadata = sqlalchemy.MetaData()
+    # potions = sqlalchemy.Table("potion_ledger", metadata, autoload_with=db.engine)
+    # cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
+    # potion_catalog_items = sqlalchemy.Table("potion_catalog_items", metadata, autoload_with=db.engine)
 
     with db.engine.begin() as connection:
         character_class = connection.execute(sqlalchemy.text(character_class_sql), 

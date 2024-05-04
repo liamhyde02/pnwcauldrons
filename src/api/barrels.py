@@ -50,14 +50,17 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
+        # Initialize globals
         max_ml = connection.execute(sqlalchemy.text(max_ml_sql)).scalar_one() * 10000
         ml, running_total = connection.execute(sqlalchemy.text(ml_gold_sql)).fetchone()
         available_ml = max_ml - ml
         small_ml_threshold, medium_ml_threshold, large_ml_threshold = connection.execute(sqlalchemy.text(global_inventory_sql)).fetchone()
         wholesale_catalog.sort(key=lambda x: x.ml_per_barrel/x.price, reverse=True)
+        # Initialize loop variables
         barrel_plan = []
         barrel_type_set = set()
         for barrel in wholesale_catalog:
+            # Determine the threshold for the barrel
             if barrel.sku.__contains__("SMALL"):
                 ml_threshold = small_ml_threshold
             elif barrel.sku.__contains__("MEDIUM"):
@@ -68,8 +71,10 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                 ml_threshold = 0
             print(f"barrel: {barrel.sku} ml_threshold: {ml_threshold}")
             if potion_type_tostr(barrel.potion_type) not in barrel_type_set:
+                # Get the current ml for the barrel type
                 barrel_ml = connection.execute(sqlalchemy.text(barrel_ml_sql), 
                                             [{"barrel_type": potion_type_tostr(barrel.potion_type)}]).scalar_one()
+                # Calculate the quantity of barrels to buy
                 max_buy_gold = running_total // barrel.price
                 max_buy_ml = available_ml // barrel.ml_per_barrel
                 max_buy_ml_threshold = (ml_threshold - barrel_ml) // barrel.ml_per_barrel

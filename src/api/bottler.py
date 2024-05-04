@@ -62,31 +62,40 @@ def get_bottle_plan():
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
 
     with db.engine.begin() as connection:
+        # Get sorted classes
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
         class_totals = {visit["character_class"]: visit["total_characters"] for visit in visits}
         sorted_classes = sorted(class_totals, key=lambda x: class_totals[x], reverse=True)
         print(f"sorted_classes: {sorted_classes}")
+        # Get available potion space
         max_potion = connection.execute(sqlalchemy.text(max_potion_sql)).scalar_one() * 50
         potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
         available_potions = max_potion - potions
+        # Get individual potion threshold
         potion_threshold = connection.execute(sqlalchemy.text(potion_threshold_sql)).scalar_one()
+        # Get ml inventory
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
             barrel_type = [1 if j == i else 0 for j in range(4)]
             ml_inventory[i] = connection.execute(sqlalchemy.text(barrel_sql), 
                                         [{"barrel_type": potion_type_tostr(barrel_type)}]).scalar_one()
+        # Get potion recipes and quantitity currently in inventory
         result = connection.execute(sqlalchemy.text(potions_sql))
         potions = result.fetchall()
         bottling_plan = []
         trained_potions = 0
         for character_class in sorted_classes:
+            # Get class preferences
             class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
                                                   [{"character_class": character_class}]).fetchall()
             class_preference = [row._asdict() for row in class_preference]
+            # If no preference, continue
             if len(class_preference) == 0:
                 print(f"character_class: {character_class}, class_preference: No preference yet")
-            else: 
+                continue
+            else:
+                # Get a weighted choice of potion type 
                 weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
                 selected_potion = random.choices(
                     [choice[0] for choice in weighted_choices], 
@@ -95,25 +104,30 @@ def get_bottle_plan():
                 )[0]
                 print(f"character_class: {character_class}, selected_potion: {selected_potion}")
                 for potion in potions:
+                    # If potion type matches selected potion, add to bottling plan
                     if potion.potion_type == selected_potion:
+                        # Calculate quantity to add
                         inventory_max = list_floor_division(ml_inventory, potion.potion_type)
                         threshold_max = potion_threshold - potion.quantity
                         quantity = min(inventory_max, threshold_max, available_potions)
+                        # If quantity is greater than 0, add to bottling plan
                         if quantity > 0:
                             bottling_plan.append(
                                                 {"potion_type": potion.potion_type, 
                                                     "quantity": quantity
                                                 }
                                         )
+                            # Update ml inventory and available potions
                             ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
                             available_potions -= quantity
                             potions.remove(potion)
                             trained_potions += 1
                             break
+            # If trained potions is greater than 3, break
             if trained_potions > 3:
                 break
         print(f"trained_potions: {bottling_plan}")
-        
+        # Fill in the rest of the bottling plan with random potions
         random.shuffle(potions)
         print(f"potion_catalog: {potions}")
         while available_potions > 0 and len(potions) > 0:
