@@ -65,7 +65,20 @@ def search_orders(
     carts = sqlalchemy.Table("carts", metadata, autoload_with=db.engine)
     cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
     potion_catalog_items = sqlalchemy.Table("potion_catalog_items", metadata, autoload_with=db.engine)
-
+    # Set order by
+    if sort_col == "customer_name":
+        sort_col = carts.c.customer_name
+    elif sort_col == "item_sku":
+        sort_col = cart_items.c.item_sku
+    elif sort_col == "line_item_total":
+        sort_col = potion_catalog_items.c.price * cart_items.c.quantity
+    elif sort_col == "timestamp":
+        sort_col = cart_items.c.created_at
+    if sort_order == "asc":
+        sort_order = sqlalchemy.asc(sort_col)
+    elif sort_order == "desc":
+        sort_order = sqlalchemy.desc(sort_col)
+    print(f"sort_col: {sort_col} sort_order: {sort_order}, offset: {offset}")
     # Initialize Statement
     search_stmt = sqlalchemy.select(
         cart_items.c.id.label("id"), 
@@ -81,16 +94,15 @@ def search_orders(
                 )
         ).limit(5
         ).offset(offset
-        )
+        ).order_by(sort_order)
     if customer_name != "":
         search_stmt = search_stmt.where(carts.c.customer_name.ilike(customer_name))
     if potion_sku != "":
         search_stmt = search_stmt.where(cart_items.c.item_sku.ilike(potion_sku))
-    search_stmt.order_by(sort_col, sort_order)
+    print(f"search_stmt: {search_stmt}")
     with db.engine.begin() as connection:
         result = connection.execute(search_stmt)
         results = [row._asdict() for row in result.fetchall()]
-        results = sorted(results, key=lambda x: x["id"], reverse=(sort_order == "asc"))
         print(f"results: {results}")
         for row in results:
             search_results.append(
