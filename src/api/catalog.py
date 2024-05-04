@@ -15,6 +15,7 @@ def get_catalog():
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     total_potions_sql = "SELECT potions, potion_capacity from inventory"
+    update_price_sql = "UPDATE potion_catalog_items SET price = :price WHERE potion_type = :potion_type"
     with db.engine.begin() as connection:
         potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
@@ -56,6 +57,11 @@ def get_catalog():
                 )[0]
                 print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
                 for potion in potions:
+                    if fire_sale:
+                        price = int(.9 * (int(potion.price * 0.75)))
+                        connection.execute(sqlalchemy.text(update_price_sql), 
+                                           [{"price": price, "potion_type": potion.potion_type}])
+
                     if potion.potion_type == selected_potion:
                         catalog.append(
                             {
@@ -77,6 +83,10 @@ def get_catalog():
         random.shuffle(potions)
         while len(potions) > 0 and listed_items < 6:
             potion = potions.pop()
+            if fire_sale:
+                price = int(potion.price * 0.75)
+                connection.execute(sqlalchemy.text(update_price_sql), 
+                                   [{"price": price, "potion_type": potion.potion_type}])
             catalog.append(
                 {
                     "sku": potion.sku,
