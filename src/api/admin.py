@@ -18,7 +18,7 @@ def reset():
     """
     processed_reset_sql = "DELETE FROM processed"
     potion_reset_sql = "DELETE FROM potion_ledger"
-    barrel_reset_sql = "DELETE FROM barrels"
+    barrel_reset_sql = "DELETE FROM barrel_ledger"
     gold_reset_sql = "DELETE FROM gold_ledger"
     carts_sql = f"DELETE FROM carts"
     cart_items_sql = f"DELETE FROM cart_items"
