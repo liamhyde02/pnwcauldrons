@@ -56,7 +56,7 @@ def get_bottle_plan():
     max_potion_sql = "SELECT SUM(potion_capacity_units) FROM global_plan"
     potions_sql = "SELECT potion_catalog_items.potion_type, COALESCE(SUM(potion_ledger.quantity), 0) as quantity FROM potion_catalog_items LEFT JOIN potion_ledger ON potion_catalog_items.potion_type = potion_ledger.potion_type GROUP BY potion_catalog_items.potion_type"
     barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
-    potion_threshold_sql = "SELECT potion_threshold FROM global_inventory"
+    potion_threshold_sql = "SELECT potion_threshold, trained_potion_threshold FROM global_inventory"
     total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
@@ -77,7 +77,7 @@ def get_bottle_plan():
         potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
         available_potions = max_potion - potions
         # Get individual potion threshold
-        potion_threshold = connection.execute(sqlalchemy.text(potion_threshold_sql)).scalar_one()
+        potion_threshold, trained_potion_threshold = connection.execute(sqlalchemy.text(potion_threshold_sql)).fetchone()
         # Get ml inventory
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
@@ -99,6 +99,7 @@ def get_bottle_plan():
                 print(f"character_class: {character_class}, class_preference: No preference yet")
                 continue
             else:
+                potion_threshold = trained_potion_threshold
                 # Get a weighted choice of potion type 
                 weighted_choices = [(pref['potion_type'], pref['amount_bought']) for pref in class_preference]
                 selected_potion = random.choices(
