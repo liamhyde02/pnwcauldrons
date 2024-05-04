@@ -65,12 +65,16 @@ def get_bottle_plan():
         # Get sorted classes
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
-        weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
-        selected_classes = random.choices(
-            [weight[0] for weight in weights],
-            weights=[weight[1] for weight in weights],
-            k=3
-        )
+        if len(visits) == 0:
+            print("No recorded visits")
+            selected_classes = []
+        else:
+            weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
+            selected_classes = random.choices(
+                [weight[0] for weight in weights],
+                weights=[weight[1] for weight in weights],
+                k=3
+            )
         print(f"selected classes: {selected_classes}")
         # Get available potion space
         max_potion = connection.execute(sqlalchemy.text(max_potion_sql)).scalar_one() * 50
