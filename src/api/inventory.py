@@ -34,17 +34,15 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
-    gold_sql = "SELECT SUM(gold) FROM gold_ledger"
-    inventory_sql = "SELECT * FROM global_inventory"
+    gold_sql = "SELECT gold FROM inventory"
+    inventory_sql = "SELECT potion_capacity_plan, ml_capacity_plan FROM global_inventory"
     with db.engine.begin() as connection:
         gold = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
-        row_inventory = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()._asdict()
+        potion_capacity_plan, ml_capacity_plan = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
         
         max_gold_purchase = gold // 1000
-        potion_capacity_plan = row_inventory["potion_capacity_plan"]
         potion_capacity_purchase = min(max_gold_purchase, potion_capacity_plan)
         max_gold_purchase -= potion_capacity_purchase
-        ml_capacity_plan = row_inventory["ml_capacity_plan"]
         ml_capacity_purchase = min(max_gold_purchase, ml_capacity_plan)
         print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
         return {

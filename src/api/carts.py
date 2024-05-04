@@ -60,13 +60,38 @@ def search_orders(
         offset = int(search_page) * 5
     search_sql = "SELECT cart_items.id, cart_items.item_sku, carts.customer_name, potion_catalog_items.price * cart_items.quantity as line_item_total, cart_items.created_at as timestamp FROM cart_items JOIN carts ON cart_items.cart_id = carts.id JOIN potion_catalog_items ON cart_items.item_sku = potion_catalog_items.sku WHERE carts.customer_name ILIKE :customer_name AND cart_items.item_sku ILIKE :item_sku ORDER BY {} {} LIMIT 5 OFFSET :offset".format(sort_col, sort_order)
     search_results = []
+    # Set up the tables
+    metadata = sqlalchemy.MetaData()
+    carts = sqlalchemy.Table("carts", metadata, autoload_with=db.engine)
+    cart_items = sqlalchemy.Table("cart_items", metadata, autoload_with=db.engine)
+    potion_catalog_items = sqlalchemy.Table("potion_catalog_items", metadata, autoload_with=db.engine)
+
+    # Initialize Statement
+    search_stmt = sqlalchemy.select(
+        cart_items.c.id.label("id"), 
+        cart_items.c.item_sku, 
+        carts.c.customer_name, 
+        (potion_catalog_items.c.price * cart_items.c.quantity).label("line_item_total"), 
+        cart_items.c.created_at.label("timestamp")
+        ).select_from(
+            cart_items.join(
+                carts, cart_items.c.cart_id == carts.c.id
+                ).join(
+                    potion_catalog_items, cart_items.c.item_sku == potion_catalog_items.c.sku
+                )
+        ).limit(5
+        ).offset(offset
+        )
+    if customer_name != "":
+        search_stmt = search_stmt.where(carts.c.customer_name.ilike(customer_name))
+    if potion_sku != "":
+        search_stmt = search_stmt.where(cart_items.c.item_sku.ilike(potion_sku))
+    search_stmt.order_by(sort_col, sort_order)
     with db.engine.begin() as connection:
-        result = connection.execute(sqlalchemy.text(search_sql), 
-                                    [{"customer_name": f"%{customer_name}%", 
-                                      "item_sku": f"%{potion_sku}%",
-                                      "offset": offset}])
+        result = connection.execute(search_stmt)
         results = [row._asdict() for row in result.fetchall()]
         results = sorted(results, key=lambda x: x["id"], reverse=(sort_order == "asc"))
+        print(f"results: {results}")
         for row in results:
             search_results.append(
                 {
@@ -79,10 +104,9 @@ def search_orders(
             )
     if search_page == "":
         next = 1
-        previous = ""
     else:
-        next = int(search_page) + 1
-        previous = int(search_page) - 1
+        next = str(int(search_page) + 1)
+    previous = search_page
     return {
         "previous": previous,
         "next": next,

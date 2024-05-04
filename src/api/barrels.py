@@ -45,24 +45,28 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
     max_ml_sql = "SELECT SUM(ml_capacity_units) FROM global_plan"
-    ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger"
-    global_inventory_sql = "SELECT * FROM global_inventory"
-    gold_sql = "SELECT SUM(gold) FROM gold_ledger"
+    ml_gold_sql = "SELECT ml, gold from inventory "
+    global_inventory_sql = "SELECT small_ml_threshold, medium_ml_threshold, large_ml_threshold FROM global_inventory"
     barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
         max_ml = connection.execute(sqlalchemy.text(max_ml_sql)).scalar_one() * 10000
-        ml = connection.execute(sqlalchemy.text(ml_sql)).scalar_one()
+        ml, running_total = connection.execute(sqlalchemy.text(ml_gold_sql)).fetchone()
         available_ml = max_ml - ml
-        global_inventory = connection.execute(sqlalchemy.text(global_inventory_sql)).fetchone()._asdict()
-        running_total = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
+        small_ml_threshold, medium_ml_threshold, large_ml_threshold = connection.execute(sqlalchemy.text(global_inventory_sql)).fetchone()
         wholesale_catalog.sort(key=lambda x: x.ml_per_barrel/x.price, reverse=True)
         barrel_plan = []
         barrel_type_set = set()
         for barrel in wholesale_catalog:
-            ml_threshold = global_inventory["ml_threshold"]
-            if barrel.sku.__contains__("large"):
-                ml_threshold = global_inventory["large_ml_threshold"]
+            if barrel.sku.__contains__("SMALL"):
+                ml_threshold = small_ml_threshold
+            elif barrel.sku.__contains__("MEDIUM"):
+                ml_threshold = medium_ml_threshold
+            elif barrel.sku.__contains__("LARGE"):
+                ml_threshold = large_ml_threshold
+            elif barrel.sku.__contains__("MINI"):
+                ml_threshold = 0
+            print(f"barrel: {barrel.sku} ml_threshold: {ml_threshold}")
             if potion_type_tostr(barrel.potion_type) not in barrel_type_set:
                 barrel_ml = connection.execute(sqlalchemy.text(barrel_ml_sql), 
                                             [{"barrel_type": potion_type_tostr(barrel.potion_type)}]).scalar_one()
