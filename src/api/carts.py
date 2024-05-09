@@ -115,7 +115,7 @@ def search_orders(
                 }
             )
     if search_page == "":
-        next = 1
+        next = str(1)
     else:
         next = str(int(search_page) + 1)
     previous = search_page
@@ -244,7 +244,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     potion_type_sql = "SELECT potion_type, price FROM potion_catalog_items WHERE sku = :sku"
     potion_update_sql = "INSERT INTO potion_ledger (processed_id, potion_type, quantity) VALUES (:processed_id, :potion_type, :quantity)"
     gold_sql = "INSERT INTO gold_ledger (processed_id, gold) VALUES (:processed_id, :gold)"
-    potion_price_sql = "SELECT price FROM potion_catalog_items WHERE sku = :sku"
+    potion_price_sql = "SELECT price FROM locked_prices WHERE sku = :sku"
     character_class_sql = "SELECT character_class FROM carts WHERE id = :cart_id"
     preferences_insert_sql = "INSERT INTO class_preferences (character_class, potion_type) VALUES (:character_class, :potion_type)"
     # metadata = sqlalchemy.MetaData()

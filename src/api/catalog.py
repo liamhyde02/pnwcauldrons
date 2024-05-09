@@ -15,8 +15,10 @@ def get_catalog():
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     total_potions_sql = "SELECT potions, potion_capacity from inventory"
-    update_price_sql = "UPDATE potion_catalog_items SET price = :price WHERE potion_type = :potion_type"
+    locked_price_sql = "INSERT INTO locked_prices (sku , price) VALUES (:sku, :price)"
+    clear_locked_prices_sql = "TRUNCATE locked_prices RESTART IDENTITY"
     with db.engine.begin() as connection:
+        connection.execute(sqlalchemy.text(clear_locked_prices_sql))
         potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
@@ -58,25 +60,27 @@ def get_catalog():
                 print(f"character_class: {character_class}, class_preference: {class_preference}, selected_potion: {selected_potion}")
                 for potion in potions:
                     if fire_sale:
-                        price = int(.9 * (int(potion.price * 0.75)))
-                        connection.execute(sqlalchemy.text(update_price_sql), 
-                                           [{"price": price, "potion_type": potion.potion_type}])
-
+                        price = int(potion.price * 0.75)
+                    else:
+                        price = potion.price
+                    price = int(price * 0.9)
                     if potion.potion_type == selected_potion:
                         catalog.append(
                             {
                                 "sku": potion.sku,
                                 "name": potion.name,
                                 "quantity": potion.quantity,
-                                "price": (int(.9 * (int(potion.price * 0.75)) if fire_sale else potion.price)),
+                                "price": price,
                                 "potion_type": potion.potion_type
                             }
                         )
+                        connection.execute(sqlalchemy.text(locked_price_sql), 
+                                       [{"sku": potion.sku, "price": price}])
                         listed_items += 1
                         potions.remove(potion)
-            if listed_items > 4:
-                break
             if len(potions) == 0:
+                break
+            if listed_items >= 6:
                 break
         print(f"trained_catalog: {catalog}")
         
@@ -85,17 +89,19 @@ def get_catalog():
             potion = potions.pop()
             if fire_sale:
                 price = int(potion.price * 0.75)
-                connection.execute(sqlalchemy.text(update_price_sql), 
-                                   [{"price": price, "potion_type": potion.potion_type}])
+            else:
+                price = potion.price
             catalog.append(
                 {
                     "sku": potion.sku,
                     "name": potion.name,
                     "quantity": potion.quantity,
-                    "price": (int(potion.price * 0.75)) if fire_sale else potion.price,
+                    "price": price,
                     "potion_type": potion.potion_type
                 }
             )
+            connection.execute(sqlalchemy.text(locked_price_sql), 
+                               [{"sku": potion.sku, "price": price}])
             listed_items += 1
         print(f"catalog: {catalog}, unlisted items: {potions}")
         return catalog

@@ -30,6 +30,17 @@ def get_inventory():
                     "gold": gold,
                 }
             ]
+def calculate_capacity_purchase(available_capacity_purchases: int, current_potion_capacity: int, current_ml_capacity):
+    required_potion_capacity = 2 * current_ml_capacity
+    if current_potion_capacity < required_potion_capacity:
+        needed_to_balance = required_potion_capacity - current_potion_capacity
+    else:
+        needed_to_balance = 0
+    
+    new_purchases = (available_capacity_purchases - needed_to_balance) // 3
+    ml_capacity_purchase = max(new_purchases + available_capacity_purchases - needed_to_balance, 0)
+    potion_capacity_purchase = max(2 * new_purchases + needed_to_balance, 0)
+    return ml_capacity_purchase, potion_capacity_purchase
 
 # Gets called once a day
 @router.post("/plan")
@@ -38,21 +49,16 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
-    gold_sql = "SELECT gold FROM inventory"
-    inventory_sql = "SELECT potion_capacity_plan, ml_capacity_plan FROM global_inventory"
+    inventory_sql = "SELECT gold, ml_capacity, potion_capacity FROM inventory"
     with db.engine.begin() as connection:
-        gold = connection.execute(sqlalchemy.text(gold_sql)).scalar_one()
-        potion_capacity_plan, ml_capacity_plan = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
-        
-        max_gold_purchase = gold // 1000
-        potion_capacity_purchase = min(max_gold_purchase, potion_capacity_plan)
-        max_gold_purchase -= potion_capacity_purchase
-        ml_capacity_purchase = min(max_gold_purchase, ml_capacity_plan)
-        print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
-        return {
-            "potion_capacity": potion_capacity_purchase,
-            "ml_capacity": ml_capacity_purchase,
-        }
+        gold, ml_capacity, potion_capacity = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
+    disposable_gold = int(gold * 0.4)
+    ml_capacity_purchase, potion_capacity_purchase = calculate_capacity_purchase(disposable_gold // 1000, potion_capacity, ml_capacity)
+    print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
+    return {
+        "potion_capacity": potion_capacity_purchase,
+        "ml_capacity": ml_capacity_purchase,
+    }
 
 class CapacityPurchase(BaseModel):
     potion_capacity: int

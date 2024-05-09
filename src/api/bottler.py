@@ -57,7 +57,7 @@ def get_bottle_plan():
     potions_sql = "SELECT potion_catalog_items.potion_type, COALESCE(SUM(potion_ledger.quantity), 0) as quantity FROM potion_catalog_items LEFT JOIN potion_ledger ON potion_catalog_items.potion_type = potion_ledger.potion_type GROUP BY potion_catalog_items.potion_type"
     barrel_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
     potion_threshold_sql = "SELECT potion_threshold, trained_potion_threshold FROM global_inventory"
-    total_potions_sql = "SELECT COALESCE(SUM(quantity), 0) FROM potion_ledger"
+    total_potions_sql = "SELECT potions FROM inventory"
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
 
