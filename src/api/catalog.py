@@ -15,7 +15,7 @@ def get_catalog():
     visits_sql = "SELECT character_class, COUNT(character_class) as total_characters FROM visits JOIN global_time ON visits.day = global_time.day GROUP BY character_class"
     class_preference_sql = "SELECT potion_type, COALESCE(COUNT(potion_type), 0) as amount_bought FROM class_preferences WHERE character_class = :character_class GROUP BY potion_type, character_class"
     total_potions_sql = "SELECT potions, potion_capacity from inventory"
-    locked_price_sql = "INSERT INTO locked_prices (sku , price) VALUES (:sku, :price)"
+    locked_price_sql = "INSERT INTO locked_prices (sku, price) VALUES (:sku, :price)"
     clear_locked_prices_sql = "TRUNCATE locked_prices RESTART IDENTITY"
     with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(clear_locked_prices_sql))
@@ -38,7 +38,7 @@ def get_catalog():
             print("Low inventory, no class preferences")
             sorted_classes = []
         fire_sale = False
-        if potion_capacity > 2 and total_potions / (potion_capacity * 50) > 0.6:
+        if total_potions / (potion_capacity * 50) > 0.7:
             print("FIRE SALE!!!")
             fire_sale = True
             

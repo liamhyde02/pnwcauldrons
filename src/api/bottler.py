@@ -121,6 +121,7 @@ def get_bottle_plan():
                         quantity = min(inventory_max, threshold_max, available_potions)
                         # If quantity is greater than 0, add to bottling plan
                         if quantity > 0:
+                            print(f"potion: {potion.potion_type}, quantity: {quantity}, ml_inventory: {ml_inventory}")
                             bottling_plan.append(
                                                 {"potion_type": potion.potion_type, 
                                                     "quantity": quantity
@@ -132,9 +133,6 @@ def get_bottle_plan():
                             potions.remove(potion)
                             trained_potions += 1
                             break
-            # If trained potions is greater than 4, break
-            if trained_potions >= 4:
-                break
         print(f"trained_potions: {bottling_plan}")
         # Fill in the rest of the bottling plan with random potions
         random.shuffle(potions)

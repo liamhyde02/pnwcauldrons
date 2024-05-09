@@ -51,22 +51,38 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     with db.engine.begin() as connection:
         # Initialize globals
         ml, running_total, max_ml = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
-        available_ml = (max_ml * 10000) - ml
+        ml_capacity = (max_ml * 10000)
+        available_ml = ml_capacity - ml
         small_ml_threshold, medium_ml_threshold, large_ml_threshold = connection.execute(sqlalchemy.text(global_inventory_sql)).fetchone()
         wholesale_catalog.sort(key=lambda x: x.ml_per_barrel/x.price, reverse=True)
         # Initialize loop variables
         barrel_plan = []
         barrel_type_set = set()
+        dark_present = False
+        for barrel in wholesale_catalog:
+            if barrel.potion_type[3] == 1:
+                dark_present = True
         for barrel in wholesale_catalog:
             # Determine the threshold for the barrel
             if barrel.sku.__contains__("SMALL"):
-                ml_threshold = small_ml_threshold
+                if ml_capacity < 20000:
+                    ml_threshold = int(ml_capacity * 0.2)
+                else:
+                    ml_threshold = int(ml_capacity * 0.1)
             elif barrel.sku.__contains__("MEDIUM"):
-                ml_threshold = medium_ml_threshold
+                if ml_capacity < 40000:
+                    ml_threshold = int(ml_capacity / 3)
+                else:
+                    ml_threshold = int(ml_capacity / 8)
             elif barrel.sku.__contains__("LARGE"):
-                ml_threshold = large_ml_threshold
+                ml_threshold = ml_capacity / 4
             elif barrel.sku.__contains__("MINI"):
                 ml_threshold = 0
+            else:
+                ml_threshold = 0
+                print(f"Unknown barrel type: {barrel.sku}")
+            if dark_present:
+                ml_threshold = int(ml_threshold * 4 / 3)
             print(f"barrel: {barrel.sku} ml_threshold: {ml_threshold}")
             if potion_type_tostr(barrel.potion_type) not in barrel_type_set:
                 # Get the current ml for the barrel type
