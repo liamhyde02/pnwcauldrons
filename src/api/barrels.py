@@ -45,7 +45,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
     inventory_sql = "SELECT ml, gold, ml_capacity from inventory "
-    global_inventory_sql = "SELECT small_ml_threshold, medium_ml_threshold, large_ml_threshold FROM global_inventory"
     barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
@@ -53,7 +52,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         ml, running_total, max_ml = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
         ml_capacity = (max_ml * 10000)
         available_ml = ml_capacity - ml
-        small_ml_threshold, medium_ml_threshold, large_ml_threshold = connection.execute(sqlalchemy.text(global_inventory_sql)).fetchone()
         wholesale_catalog.sort(key=lambda x: x.ml_per_barrel/x.price, reverse=True)
         # Initialize loop variables
         barrel_plan = []
@@ -71,7 +69,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     ml_threshold = int(ml_capacity * 0.1)
             elif barrel.sku.__contains__("MEDIUM"):
                 if ml_capacity < 40000:
-                    ml_threshold = int(ml_capacity / 3)
+                    ml_threshold = int(ml_capacity / 4)
                 else:
                     ml_threshold = int(ml_capacity / 8)
             elif barrel.sku.__contains__("LARGE"):
