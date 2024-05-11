@@ -22,16 +22,19 @@ def get_catalog():
         potions = connection.execute(sqlalchemy.text(potion_quantity_sql)).fetchall()
         result = connection.execute(sqlalchemy.text(visits_sql)).fetchall()
         visits = [row._asdict() for row in result]
+        selected_classes = []
         if len(visits) == 0:
             print("No recorded visits")
-            selected_classes = []
         else:
             weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
-            selected_classes = random.choices(
-                [weight[0] for weight in weights], 
-                weights=[weight[1] for weight in weights],
-                k=3
-            )
+            for i in range(3):
+                selected_class = random.choices(
+                    [choice[0] for choice in weights], 
+                    weights=[choice[1] for choice in weights],
+                    k=1
+                )[0]
+                weights.pop([choice[0] for choice in weights].index(selected_class))
+                selected_classes.append(selected_class)
         print(f"selected_classes: {selected_classes}")
         total_potions, potion_capacity = connection.execute(sqlalchemy.text(total_potions_sql)).fetchone()
         if total_potions / (potion_capacity * 50) < 0.2:
