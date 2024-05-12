@@ -87,7 +87,8 @@ def get_bottle_plan():
             print("No recorded visits")
         else:
             weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
-            for i in range(4):
+            i = 0
+            while i < 4 and len(weights) > 0:
                 selected_class = random.choices(
                     [choice[0] for choice in weights], 
                     weights=[choice[1] for choice in weights],

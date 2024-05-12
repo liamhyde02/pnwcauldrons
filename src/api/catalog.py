@@ -36,7 +36,7 @@ def get_catalog():
         else:
             weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
             i = 0
-            while i < 4:
+            while i < 4 and len(weights) > 0:
                 selected_class = random.choices(
                     [choice[0] for choice in weights], 
                     weights=[choice[1] for choice in weights],
