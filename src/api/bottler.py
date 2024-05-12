@@ -109,13 +109,17 @@ def get_bottle_plan():
                     print(f"character_class: {selected_class}, class_preference: {class_preferences}, selected_potion: {selected_potion}")
                     for potion in potions:
                         if potion.potion_type == selected_potion:
-                            bottling_plan.append(
-                                {"potion_type": potion.potion_type, 
-                                    "quantity": min(potion_threshold - potion.quantity, available_potions)
-                                }
-                            )
-                            ml_inventory = [ml_inventory[i] - (min(potion_threshold - potion.quantity, available_potions) * potion.potion_type[i]) for i in range(4)]
-                            available_potions -= min(potion_threshold - potion.quantity, available_potions)
+                            inventory_max = list_floor_division(ml_inventory, potion.potion_type)
+                            threshold_max = potion_threshold - potion.quantity
+                            quantity = min(inventory_max, threshold_max, available_potions)
+                            if quantity > 0:
+                                bottling_plan.append(
+                                                    {"potion_type": potion.potion_type, 
+                                                        "quantity": quantity
+                                                    }
+                                            )
+                                ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
+                                available_potions -= quantity
                             i += 1
                             break
             
