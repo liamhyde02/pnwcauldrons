@@ -70,7 +70,7 @@ def get_bottle_plan():
             print("No recorded visits")
         else:
             weights = [(pref["character_class"], pref["total_characters"]) for pref in visits]
-            for i in range(3):
+            for i in range(4):
                 selected_class = random.choices(
                     [choice[0] for choice in weights], 
                     weights=[choice[1] for choice in weights],
@@ -84,7 +84,7 @@ def get_bottle_plan():
         potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
         available_potions = max_potion - potions
         # Get individual potion threshold
-        potion_threshold, trained_potion_threshold = max_potion // 12, max_potion // 6
+        potion_threshold, trained_potion_threshold = max_potion // 10, max_potion // 5
         # Get ml inventory
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
@@ -95,7 +95,6 @@ def get_bottle_plan():
         result = connection.execute(sqlalchemy.text(potions_sql))
         potions = result.fetchall()
         bottling_plan = []
-        trained_potions = 0
         for character_class in selected_classes:
             # Get class preferences
             class_preference = connection.execute(sqlalchemy.text(class_preference_sql), 
@@ -134,7 +133,6 @@ def get_bottle_plan():
                             ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
                             available_potions -= quantity
                             potions.remove(potion)
-                            trained_potions += 1
                             break
         print(f"trained_potions: {bottling_plan}")
         # Fill in the rest of the bottling plan with random potions
