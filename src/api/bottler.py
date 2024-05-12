@@ -120,8 +120,9 @@ def get_bottle_plan():
                                             )
                                 ml_inventory = [ml_inventory[i] - quantity * potion.potion_type[i] for i in range(4)]
                                 available_potions -= quantity
-                            i += 1
-                            break
+                                i += 1
+                                potions.remove(potion)
+                                break
             
         print(f"trained_potions: {bottling_plan}")
         # Fill in the rest of the bottling plan with random potions
