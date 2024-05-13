@@ -71,7 +71,7 @@ def get_bottle_plan():
         potions = connection.execute(sqlalchemy.text(total_potions_sql)).scalar_one()
         available_potions = max_potion - potions
         # Get individual potion threshold
-        potion_threshold, trained_potion_threshold = max_potion // 10, max_potion // 5
+        potion_threshold, trained_potion_threshold = max_potion // 20, max_potion // 10
         # Get ml inventory
         ml_inventory = [0 for _ in range(4)]
         for i in range(4):
