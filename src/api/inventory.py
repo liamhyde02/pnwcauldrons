@@ -16,9 +16,7 @@ def get_inventory():
     """ """
     get_inventory_sql = "SELECT gold, ml, potions FROM inventory"
     inventory_log_sql = "INSERT INTO inventory_log (gold, ml, potions) SELECT gold, ml, potions FROM inventory"
-    reset_fire_sale_sql = "UPDATE potion_catalog_items SET price = 50 WHERE price != 50"
     with db.engine.begin() as connection:
-        connection.execute(sqlalchemy.text(reset_fire_sale_sql))
         gold, ml, potions = connection.execute(sqlalchemy.text(get_inventory_sql)).fetchone()
         connection.execute(sqlalchemy.text(inventory_log_sql))
         print(f"num_potions: {potions} num_ml: {ml} gold: {gold}")   
