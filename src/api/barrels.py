@@ -69,19 +69,18 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     ml_threshold = int(ml_capacity * 0.1)
             elif barrel.sku.__contains__("MEDIUM"):
                 if ml_capacity < 40000:
-                    ml_threshold = int(ml_capacity / 4)
+                    ml_threshold = int(ml_capacity / 3)
                 else:
-                    ml_threshold = int(ml_capacity / 8)
+                    ml_threshold = int(ml_capacity / 6)
             elif barrel.sku.__contains__("LARGE"):
-                ml_threshold = ml_capacity / 4
+                ml_threshold = ml_capacity / 3
             elif barrel.sku.__contains__("MINI"):
                 ml_threshold = 0
             else:
                 ml_threshold = 0
                 print(f"Unknown barrel type: {barrel.sku}")
             if dark_present:
-                ml_threshold = int(ml_threshold * 4 / 3)
-            print(f"barrel: {barrel.sku} ml_threshold: {ml_threshold}")
+                ml_threshold = int(ml_threshold * 3 / 4)
             if potion_type_tostr(barrel.potion_type) not in barrel_type_set:
                 # Get the current ml for the barrel type
                 barrel_ml = connection.execute(sqlalchemy.text(barrel_ml_sql), 

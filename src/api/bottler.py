@@ -111,7 +111,7 @@ def get_bottle_plan():
                     for potion in potions:
                         if potion.potion_type == selected_potion:
                             inventory_max = list_floor_division(ml_inventory, potion.potion_type)
-                            threshold_max = potion_threshold - potion.quantity
+                            threshold_max = trained_potion_threshold - potion.quantity
                             quantity = min(inventory_max, threshold_max, available_potions)
                             if quantity > 0:
                                 bottling_plan.append(
@@ -128,7 +128,6 @@ def get_bottle_plan():
         print(f"trained_potions: {bottling_plan}")
         # Fill in the rest of the bottling plan with random potions
         random.shuffle(potions)
-        print(f"potion_catalog: {potions}")
         while available_potions > 0 and len(potions) > 0:
             potion = potions.pop()
             inventory_max = list_floor_division(ml_inventory, potion.potion_type)
