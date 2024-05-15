@@ -28,13 +28,9 @@ def get_inventory():
                     "gold": gold,
                 }
             ]
-def calculate_capacity_purchase(available_capacity_purchases: int, current_potion_capacity: int, current_ml_capacity):
-    if available_capacity_purchases % 2 == 1:
-        potion_capacity_purchase = available_capacity_purchases // 2 + 1
-        ml_capacity_purchase = available_capacity_purchases // 2
-    else:
-        potion_capacity_purchase = available_capacity_purchases // 2
-        ml_capacity_purchase = available_capacity_purchases // 2
+def calculate_capacity_purchase(available_capacity_purchases: int):
+    ml_capacity_purchase = available_capacity_purchases // 3
+    potion_capacity_purchase = available_capacity_purchases - ml_capacity_purchase
     return ml_capacity_purchase, potion_capacity_purchase
 
 # Gets called once a day
@@ -48,7 +44,7 @@ def get_capacity_plan():
     with db.engine.begin() as connection:
         gold, ml_capacity, potion_capacity = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
     disposable_gold = int(gold * 0.7)
-    ml_capacity_purchase, potion_capacity_purchase = calculate_capacity_purchase(disposable_gold // 1000, potion_capacity, ml_capacity)
+    ml_capacity_purchase, potion_capacity_purchase = calculate_capacity_purchase(disposable_gold // 1000)
     print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
     return {
         "potion_capacity": potion_capacity_purchase,
