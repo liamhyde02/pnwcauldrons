@@ -45,6 +45,8 @@ def get_capacity_plan():
         gold, ml_capacity, potion_capacity = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
     disposable_gold = int(gold * 0.7)
     ml_capacity_purchase, potion_capacity_purchase = calculate_capacity_purchase(disposable_gold // 1000)
+    ml_capacity_purchase = min(ml_capacity_purchase, 10)
+    potion_capacity_purchase = min(potion_capacity_purchase, 10)
     print(f"potion_capacity_purchase: {potion_capacity_purchase} ml_capacity_purchase: {ml_capacity_purchase}")
     return {
         "potion_capacity": potion_capacity_purchase,
