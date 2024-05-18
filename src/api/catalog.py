@@ -61,7 +61,6 @@ def get_catalog():
                             price = int(potion.price * 0.75)
                         else:
                             price = potion.price
-                        price = int(price * 0.9)
                         if potion.potion_type == selected_potion:
                             catalog.append(
                                 {
