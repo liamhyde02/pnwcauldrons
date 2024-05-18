@@ -41,9 +41,11 @@ def get_capacity_plan():
     capacity unit costs 1000 gold.
     """
     inventory_sql = "SELECT gold, ml_capacity, potion_capacity FROM inventory"
+    disposable_gold_sql = "SELECT disposable_gold FROM global_inventory"
     with db.engine.begin() as connection:
-        gold, ml_capacity, potion_capacity = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
-    disposable_gold = int(gold * 0.7)
+        gold = connection.execute(sqlalchemy.text(inventory_sql)).scalar_one()
+        disposable_gold_pct = connection.execute(sqlalchemy.text(disposable_gold_sql)).scalar_one()
+    disposable_gold = int(gold * disposable_gold_pct)
     ml_capacity_purchase, potion_capacity_purchase = calculate_capacity_purchase(disposable_gold // 1000)
     ml_capacity_purchase = min(ml_capacity_purchase, 10)
     potion_capacity_purchase = min(potion_capacity_purchase, 10)

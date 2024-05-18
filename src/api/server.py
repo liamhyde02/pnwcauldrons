@@ -8,17 +8,17 @@ import sys
 from starlette.middleware.cors import CORSMiddleware
 
 description = """
-Central Coast Cauldrons is the premier ecommerce site for all your alchemical desires.
+PNW Cauldrons is the premier ecommerce site for all your alchemical desires.
 """
 
 app = FastAPI(
-    title="Central Coast Cauldrons",
+    title="PNW Cauldrons",
     description=description,
     version="0.0.1",
     terms_of_service="http://example.com/terms/",
     contact={
-        "name": "Lucas Pierce",
-        "email": "lupierce@calpoly.edu",
+        "name": "Liam Hyde",
+        "email": "lihyde@calpoly.edu",
     },
 )
 
@@ -53,4 +53,4 @@ async def validation_exception_handler(request, exc):
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Central Coast Cauldrons."}
+    return {"message": "Welcome to PNW Cauldrons."}
