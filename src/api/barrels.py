@@ -44,12 +44,15 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
-    inventory_sql = "SELECT ml, gold, ml_capacity from inventory "
+    inventory_sql = "SELECT ml, gold, ml_capacity from inventory"
+    disposable_gold_sql = "SELECT disposable_gold FROM global_inventory"
     barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
         # Initialize globals
         ml, running_total, max_ml = connection.execute(sqlalchemy.text(inventory_sql)).fetchone()
+        disposable_gold_pct = connection.execute(sqlalchemy.text(disposable_gold_sql)).scalar_one()
+        running_total = int(running_total * disposable_gold_pct)
         ml_capacity = (max_ml * 10000)
         available_ml = ml_capacity - ml
         wholesale_catalog.sort(key=lambda x: x.ml_per_barrel/x.price, reverse=True)
