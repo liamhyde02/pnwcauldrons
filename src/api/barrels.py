@@ -45,7 +45,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
     inventory_sql = "SELECT ml, gold, ml_capacity from inventory"
-    disposable_gold_sql = "SELECT disposable_gold FROM global_inventory"
+    disposable_gold_sql = "SELECT barrels_disposable_gold FROM global_inventory"
     barrel_ml_sql = "SELECT COALESCE(SUM(potion_ml), 0) FROM barrel_ledger WHERE barrel_type = :barrel_type"
 
     with db.engine.begin() as connection:
